@@ -90,7 +90,7 @@
 #      and static.
 #    * def_router_model -- default router model
 #****
-
+package require msgcat
 
 set newlink ""
 set selectbox ""
