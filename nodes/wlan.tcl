@@ -22,7 +22,6 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
-
 set MODULE wlan
 
 registerModule $MODULE
@@ -47,13 +46,13 @@ proc $MODULE.icon {size} {
     global ROOTDIR LIBDIR
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/cloud.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/cloud.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/cloud.gif
+	return $ROOTDIR/$LIBDIR/icons/small/cloud.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/cloud.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/cloud.svg
       }
     }
 }
