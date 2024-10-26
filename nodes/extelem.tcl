@@ -28,7 +28,6 @@
 
 # $Id: extelem.tcl 129 2015-02-13 11:14:44Z valter $
 
-
 #****h* imunes/extelem.tcl
 # NAME
 #  extelem.tcl -- defines extelem specific procedures
@@ -104,17 +103,18 @@ proc $MODULE.confNewNode { node } {
 # RESULT
 #   * path -- path to icon
 #****
+
 proc $MODULE.icon { size } {
     global ROOTDIR LIBDIR 
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/cloud.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/cloud.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/cloud.gif
+	return $ROOTDIR/$LIBDIR/icons/small/cloud.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/cloud.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/cloud.svg
       }
     }
 }
