@@ -28,7 +28,6 @@
 
 # $Id: rj45.tcl 130 2015-02-24 09:52:19Z valter $
 
-
 #****h* imunes/rj45.tcl
 # NAME
 #  rj45.tcl -- defines rj45 specific procedures
@@ -91,13 +90,13 @@ proc $MODULE.icon { size } {
     global ROOTDIR LIBDIR
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/rj45.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/rj45.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/rj45.gif
+	return $ROOTDIR/$LIBDIR/icons/small/rj45.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/rj45.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/rj45.svg
       }
     }
 }
@@ -234,8 +233,8 @@ proc $MODULE.configGUI { c node } {
     set treecolumns {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "rj45 configuration"
-    configGUI_nodeName $wi $node "Physical interface:"
+    wm title $wi [mc "rj45 configuration"]
+    configGUI_nodeName $wi $node [mc "Physical interface:"]
     configGUI_etherVlan $wi $node
     configGUI_buttonsACNode $wi $node
 }
