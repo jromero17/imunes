@@ -14,8 +14,7 @@ sed -i '' '/Disabling MPLS support/d' /terr.log
 
 vtysh << __END__
 conf term
-allow-reserved-ranges
 `cat $1`
 __END__
 
-/sbin/ifconfig lo0 127.0.0.1
+ifconfig lo0 127.0.0.1
