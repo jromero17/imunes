@@ -6,6 +6,7 @@ proc getTunIPv4Addr { node } {
     }
     return ""
 }
+
 proc setTunIPv4Addr { node addr } {
     set cfg [list "nat64"]
     foreach line [netconfFetchSection $node "nat64"] {
