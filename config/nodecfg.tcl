@@ -28,7 +28,6 @@
 
 # $Id: nodecfg.tcl 149 2015-03-27 15:50:14Z valter $
 
-
 #****h* imunes/nodecfg.tcl
 #
 # NAME
