@@ -29,6 +29,7 @@ proc addAnnotation { target type } {
 #   * type -- type of annimation
 #   * target -- existing annotation
 #****
+
 proc deleteAnnotation { c type target } {
     upvar 0 ::cf::[set ::curcfg]::annotation_list annotation_list
     upvar 0 ::cf::[set ::curcfg]::$target $target
