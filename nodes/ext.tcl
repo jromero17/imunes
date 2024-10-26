@@ -25,7 +25,6 @@
 
 # $Id: ext.tcl 63 2013-10-03 12:17:50Z valter $
 
-
 #****h* imunes/ext.tcl
 # NAME
 #  ext.tcl -- defines pc specific procedures
@@ -98,13 +97,13 @@ proc $MODULE.icon { size } {
     global ROOTDIR LIBDIR
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/ext.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/ext.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/ext.gif
+	return $ROOTDIR/$LIBDIR/icons/small/ext.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/ext.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/ext.svg
       }
     }
 }
