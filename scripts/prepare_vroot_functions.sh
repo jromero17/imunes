@@ -18,8 +18,8 @@ log () {
 # GLOBAL FOR EVERY VERSION
 ##########################
 # directories
-ROOTDIR="."
-LIBDIR=""
+ROOTDIR=/usr/local
+LIBDIR=lib/imunes
 IMUNESDIR=`pwd`
 cd ~
 HOMEDIR=`pwd`
@@ -311,6 +311,19 @@ wiresharkGUIfix () {
     # Make Wireshark's main upper and middle window panes bigger on first start
     echo "gui.geometry_main_upper_pane: 135" > $VROOT_MASTER/root/.wireshark/recent
     echo "gui.geometry_main_lower_pane: 200" >> $VROOT_MASTER/root/.wireshark/recent
+}
+
+configApache24 () {
+    if [ -d "$VROOT_MASTER/usr/local/etc/apache24/" ]; then
+	cd $VROOT_MASTER/usr/local/etc/apache24/
+ 	cp httpd.conf httpd.conf.backup
+  	#sed -i -e 's/#ServerName www.example.com:80/ServerName localhost/' /usr/local/etc/apache24/httpd.conf
+   	sed -i -e 's/#ServerName www.example.com:80/ServerName localhost/' httpd.conf
+    else
+	log "ERR" "Apache24 not installed in \
+	$VROOT_MASTER/usr/local/etc/apache24/\nScript aborted."
+	exit 1
+    fi
 }
 
 cleanUnnecessary () {
