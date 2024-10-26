@@ -2,10 +2,11 @@
 
 . scripts/prepare_vroot_functions.sh
 
-PACKAGES_MINIMAL="$PACKAGES_MINIMAL bind918"
-PACKAGES="$PACKAGES_MINIMAL $PACKAGES_COMMON isc-dhcp44-server isc-dhcp44-client \
-    sylpheed firefox wireshark gnome-themes-extra"
-PACKAGES=`echo $PACKAGES | sed 's/scapy/py39-scapy/'`
+PACKAGES_MINIMAL="$PACKAGES_MINIMAL bind918 bind-tools dnsmasq"
+PACKAGES="$PACKAGES_MINIMAL $PACKAGES_COMMON isc-dhcp44-server isc-dhcp44-client isc-dhcp44-relay \
+    sylpheed apache24 apr db18 jansson netsurf midori wireshark gnome-themes-extra sakura vte3 \
+    fping dsniff gdk-pixbuf2 gsfonts xpdf openvpn easy-rsa net-snmp"
+PACKAGES=`echo $PACKAGES | sed 's/scapy/py311-scapy/'`
 PACKAGES=`echo $PACKAGES | sed 's/quagga/frr8/'`
 
 checkArgs $*
@@ -39,9 +40,14 @@ if [ $mini -eq 0 ]; then
     log "OUT" "Installing additional tools done."
 fi
 
+mkdir $VROOT_MASTER/usr/local/etc/snmp
+mkdir $VROOT_MASTER/usr/local/etc/openvpn
+
 configFrr
 
 wiresharkGUIfix
+
+configApache24
 
 cleanUnnecessary
 
