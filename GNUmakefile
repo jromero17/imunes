@@ -3,6 +3,8 @@ LIBDIR = lib/imunes
 IMUNESDIR = $(PREFIX)/$(LIBDIR)
 CONFIGDIR = $(IMUNESDIR)/config
 GUIDIR = $(IMUNESDIR)/gui
+GUIDIRMSGS = $(GUIDIR)/msgs
+GUIDIRAYU = $(GUIDIR)/ayuda
 ICONSDIR = $(IMUNESDIR)/icons
 NODESDIR = $(IMUNESDIR)/nodes
 RUNTIMEDIR = $(IMUNESDIR)/runtime
@@ -21,26 +23,27 @@ VROOT_EXISTS = $(shell [ -d /var/imunes/vroot ] && echo 1 || echo 0 )
 SERVICEDIR=/usr/local/etc/rc.d
 STARTUPDIR=/var/imunes-service
 
-BASEFILES =	COPYRIGHT README.md VERSION
+BASEFILES =	COPYRIGHT README VERSION
 CONFIGFILES =	$(wildcard config/*.tcl)
 GUIFILES =	$(wildcard gui/*.tcl)
+GUIFILESMSGS =  $(wildcard gui/msgs/*.msg)
 NODESFILES =	$(wildcard nodes/*.tcl)
 RUNTIMEFILES =	$(wildcard runtime/*.tcl)
 PATCHESFILES =	$(wildcard src/patches/*)
 
-VROOT =	$(wildcard scripts/*.sh scripts/*.bash scripts/daemons)
+VROOT =	$(wildcard scripts/*.sh scripts/*.bash)
 TOOLS =	$(filter-out $(VROOT), $(wildcard scripts/*))
 
-NODE_ICONS = frswitch.gif hub.gif lanswitch.gif rj45.gif cloud.gif host.gif \
-	ipfirewall.gif pc.gif router.gif \
-	stpswitch.gif filter.gif packgen.gif nat64.gif ext.gif extnat.gif
+NODE_ICONS = frswitch.svg hub.svg lanswitch.svg rj45.svg cloud.svg host.svg ipfirewall.svg \
+	pc.svg router.svg click_l2.svg click_l3.svg stpswitch.svg filter.svg packgen.svg \
+	nat64.svg ext.svg extnat.svg
 
 NORMAL_ICONS = $(NODE_ICONS)
 
 SMALL_ICONS = $(NODE_ICONS)
 
-TINY_ICONS = $(NODE_ICONS) link.gif select.gif l2.gif l3.gif freeform.gif \
-		oval.gif rectangle.gif text.gif
+TINY_ICONS = $(NODE_ICONS) link.svg minizoomin.svg minizoomout.svg play_start.svg play_stop.svg \
+		select.svg extnat.svg l2.svg l2.gif l3.svg l3.gif freeform.svg oval.svg rectangle.svg text.svg
 
 ICONS = $(wildcard icons/imunes_*)
 
@@ -87,7 +90,7 @@ endif
 	mv $(BINDIR)/vlink.tcl $(BINDIR)/vlink
 
 	mkdir -p $(SCRIPTSDIR)
-
+	
 	for file in $(VROOT); do \
 	    sed -e "s,LIBDIR=\"\",LIBDIR=$(LIBDIR)," \
 		-e "s,ROOTDIR=\".\",ROOTDIR=$(PREFIX)," \
@@ -100,6 +103,11 @@ endif
 
 	mkdir -p $(GUIDIR)
 	cp $(GUIFILES) $(GUIDIR)
+
+	mkdir -p $(GUIDIRMSGS)
+	cp $(GUIFILESMSGS) $(GUIDIRMSGS)
+
+	mkdir -p $(GUIDIRAYU)
 
 	mkdir -p $(NODESDIR)
 	cp $(NODESFILES) $(NODESDIR)
