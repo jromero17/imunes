@@ -30,6 +30,7 @@
 # NAME
 #   ipv6.tcl -- file for handeling IPv6
 #****
+
 global ipv6 changeAddrRange6 changeAddressRange6
 
 set ipv6 fc00::/64
