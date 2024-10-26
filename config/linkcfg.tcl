@@ -30,6 +30,7 @@
 
 
 #****h* imunes/linkcfg.tcl
+#
 # NAME
 #  linkcfg.tcl -- file used for manipultaion with links in IMUNES
 # FUNCTION
@@ -159,6 +160,12 @@ proc removeLink { link } {
 	netconfClearSection $node "interface $ifc"
 	set i [lsearch [set $node] "interface-peer {$ifc $peer}"]
 	set $node [lreplace [set $node] $i $i]
+	#...
+
+
+
+	...
+	#
 	foreach lifc [logIfcList $node] {
 	    switch -exact [getLogIfcType $node $lifc] {
 		vlan {
