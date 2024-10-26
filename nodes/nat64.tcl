@@ -25,7 +25,6 @@
 # This work was supported in part by Croatian Ministry of Science
 # and Technology through the research contract #IP-2003-143.
 #
-
 set MODULE nat64
 
 registerModule $MODULE
@@ -79,13 +78,13 @@ proc $MODULE.icon {size} {
     global ROOTDIR LIBDIR
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/nat64.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/nat64.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/nat64.gif
+	return $ROOTDIR/$LIBDIR/icons/small/nat64.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/nat64.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/nat64.svg
       }
     }
 }
@@ -244,8 +243,8 @@ proc $MODULE.configGUI { c node } {
     set guielements {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "nat64 configuration"
-    configGUI_nodeName $wi $node "Node name:"
+    wm title $wi [mc "nat64 configuration"]
+    configGUI_nodeName $wi $node [mc "Node name:"]
 
     set tabs [configGUI_addNotebook $wi $node {"Configuration" "Interfaces" "NAT64"}]
     set configtab [lindex $tabs 0]
