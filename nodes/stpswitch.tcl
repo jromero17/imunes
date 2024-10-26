@@ -36,7 +36,6 @@
 #  end with function specific part that is the same for all the node
 #  types that work on the same layer.
 #****
-
 set MODULE stpswitch 
 
 registerModule $MODULE
@@ -90,13 +89,13 @@ proc $MODULE.icon {size} {
     global ROOTDIR LIBDIR
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/stpswitch.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/stpswitch.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/stpswitch.gif
+	return $ROOTDIR/$LIBDIR/icons/small/stpswitch.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/stpswitch.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/stpswitch.svg
       }
     }
 }
@@ -499,8 +498,8 @@ proc $MODULE.configGUI { c node } {
     set brguielements {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "stpswitch configuration"
-    configGUI_nodeName $wi $node "Node name:"
+    wm title $wi [mc "stpswitch configuration"]
+    configGUI_nodeName $wi $node [mc "Node name:"]
 
     set tabs [configGUI_addNotebook $wi $node {"Configuration" "Interfaces" \
     "Bridge"}]
