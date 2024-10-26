@@ -17,6 +17,60 @@ IMUNES GUI is a simple Tcl/Tk based management console, allowing for specificati
 #### Also needed for graphical mode:
     # pkg install tk86 ImageMagick7 xterm wireshark socat
 
+### Support for images and icons .SVG to IMUNES
+
+https://wiki.tcl-lang.org/page/tksvg
+
+    # cd  /root
+    # git clone https://github.com/oehhar/tksvg.git
+    # cd tksvg
+    # ./configure --with-tcl=/usr/local/lib/tcl8.6 --with-tk=/usr/local/lib/tk8.6 --exec-prefix=/usr/local/lib/tksvg0.14
+    # make
+    # make install
+
+    NOTE: tksvg0.14 (comes out of the tksvgs package version, if you change the version you must change the line at the end, 
+      depending on the version)
+
+    The compilation creates the following tree of directories and files.
+###  
+    :::text
+    Directory tree inside /usr/local/lib/tksvg0.14
+    
+    tksvg0.14
+    │
+    ├── bin
+    │     
+    ├── lib
+    │   │
+    │   ├── tksvg0.14
+    │       │
+    │       ├── libtksvg0.14.so
+    │       └── pkgIndex.tcl
+    ├── libtksvg0.14.so
+    └── pkgIndex.tcl
+    
+    For some unknown reason the last two lines are not created in some compilations so the tksvg0.14 library is not created. 
+    the tksvg0.14 library does not work.
+    
+### To fix the problem run the following commands:
+    
+    # cd /usr/local/lib/tksvg0.14/lib/tksvg0.14/
+    # cp -rf libtksvg0.14.so ../../
+    # cp -rf pkgIndex.tcl ../../
+
+### In Operating system Linux Debian 12.5
+    # apt install tcl tcllib docker.io
+    # apt install tk imagemagick wireshark socat
+    # apt install tcl8.6-dev tcl-dev tk8.6-dev tk-dev
+    # bash configure --with-tcl=/usr/lib/tcl8.6 --with-tk=/usr/lib/tk8.6 --exec-prefix=/usr/lib/tksvg0.14
+    # make install
+
+    # cd /usr/lib/tksvg0.14/lib/tksvg0.14/
+    # cp -rf libtksvg0.14.so ../../
+    # cp -rf pkgIndex.tcl ../../
+
+This solves the problem, when the correct directory and file structure is not created during compilation.
+
 ### System requirements (Linux)
 -----------------------
 When IMUNES is used on top of Linux, a 3.10 Linux kernel is the minimum requirement.
