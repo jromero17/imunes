@@ -12,8 +12,22 @@ proc redrawAll {} {
     upvar 0 ::cf::[set ::curcfg]::annotation_list annotation_list
     upvar 0 ::cf::[set ::curcfg]::curcanvas curcanvas
     upvar 0 ::cf::[set ::curcfg]::zoom zoom
+    
+    ### Variable $colorcanvas puesta por mi. 
+    ### Para cambiar color del canvas use la variable "$colorcanvas"
+    global colorcanvas
+    global themeselec
+    global currentTheme
+    global currentThemenew
+    # Variables gridvert y gridhori creadas por mi
+    global gridVert
+    global gridHori
+    global gridIntVert
+    global gridIntHori 
+    
     global background sizex sizey grid
     global showBkgImage showAnnotations showGrid bkgImage
+    
     .bottom.zoom config -text "zoom [expr {int($zoom * 100)}]%"
     set e_sizex [expr {int($sizex * $zoom)}]
     set e_sizey [expr {int($sizey * $zoom)}]
@@ -36,7 +50,7 @@ proc redrawAll {} {
 	}
     } else {
 	set background [.panwin.f1.c create rectangle 0 0 $e_sizex $e_sizey \
-	    -fill white -tags "background"]
+	    -fill $colorcanvas -tags "background"]
     }
 
     if { $showAnnotations == 1 } {
@@ -55,10 +69,10 @@ proc redrawAll {} {
 	    if { [expr {$x % $e_grid2}] != 0 } {
 		if { $zoom > 0.5 } {
 		    .panwin.f1.c create line $x 1 $x $e_sizey \
-			-fill gray -dash {1 7} -tags "grid"
+			-fill $gridIntVert -dash {1 7} -tags "grid"
 		}
 	    } else {
-		.panwin.f1.c create line $x 1 $x $e_sizey -fill gray -dash {1 3} \
+		.panwin.f1.c create line $x 1 $x $e_sizey -fill $gridVert -dash {1 3} \
 		   -tags "grid"
 	    }
 	}
@@ -66,10 +80,10 @@ proc redrawAll {} {
 	    if { [expr {$y % $e_grid2}] != 0 } {
 		if { $zoom > 0.5 } {
 		    .panwin.f1.c create line 1 $y $e_sizex $y \
-			-fill gray -dash {1 7} -tags "grid"
+			-fill $gridIntHori -dash {1 7} -tags "grid"
 		}
 	    } else {
-		.panwin.f1.c create line 1 $y $e_sizex $y -fill gray -dash {1 3} \
+		.panwin.f1.c create line 1 $y $e_sizex $y -fill $gridHori -dash {1 3} \
 		    -tags "grid"
 	    }
 	}
@@ -115,6 +129,7 @@ proc drawNode { node } {
     upvar 0 ::cf::[set ::curcfg]::curcanvas curcanvas
     upvar 0 ::cf::[set ::curcfg]::zoom zoom
     global showNodeLabels pseudo
+    global colorNameNode
 
     set type [nodeType $node]
     set coords [getNodeCoords $node]
@@ -123,6 +138,8 @@ proc drawNode { node } {
     set customIcon [getCustomIcon $node]
     if {[string match "*img*" $customIcon] == 0} {
 	global $type
+	#agregada por mi $zoom aqui
+	global $zoom
 	.panwin.f1.c create image $x $y -image [set $type] -tags "node $node"
     } else {
 	global iconSize
@@ -130,6 +147,11 @@ proc drawNode { node } {
 	    normal {
 		set icon_data [getImageData $customIcon]
 		image create photo img_$customIcon -data $icon_data
+		###################################################
+		set height "[expr {53 * $zoom}]" 
+		set imageHeight [image height img_$customIcon]
+		img_$customIcon configure -format [list svg -scale [expr {double($height) / $imageHeight}]]
+		###################################################
 		.panwin.f1.c create image $x $y -image img_$customIcon -tags "node $node"
 	    }
 	    small {
@@ -154,7 +176,13 @@ proc drawNode { node } {
 		set labelstr [format "%s %s" $labelstr [getIfcIPv4addr $node $ifc]]
 	    }
 	}
-	set label [.panwin.f1.c create text $x $y -fill blue \
+	### Variable puesta por mi. $colorNameNode blue
+	#set colorNameNode black
+	#set label [.panwin.f1.c create text $x $y -fill $colorNameNode
+	#puts "[expr {int($zoom * 10)}]"
+	set zoomtext "[expr {int($zoom * 9)}]"
+	set sizetext "$zoomtext"	
+	set label [.panwin.f1.c create text $x $y -fill $colorNameNode -font "-size $sizetext" \
 	    -text "$labelstr" \
 	    -tags "nodelabel $node"]
     } else {
@@ -163,8 +191,7 @@ proc drawNode { node } {
 	set ifc [ifcByPeer $pnode [getNodeMirror $node]]
 	if { $pcanvas != $curcanvas } {
 	    set label [.panwin.f1.c create text $x $y -fill blue \
-		-text "[getNodeName $pnode]:$ifc
-@[getCanvasName $pcanvas]" \
+		-text "[getNodeName $pnode]:$ifc@[getCanvasName $pcanvas]" \
 		-tags "nodelabel $node" -justify center]
 	} else {
 	    set label [.panwin.f1.c create text $x $y -fill blue \
@@ -219,9 +246,11 @@ proc drawLink { link } {
     if { $invisible == 1 && [getLinkMirror $link] != "" } {
 	.panwin.f1.c itemconfigure $link -state hidden
     }
+    ### Variable $colorBglink  puesta por mi
+    global colorBgLink    
     .panwin.f1.c raise $newlink background
     set newlink [.panwin.f1.c create line 0 0 0 0 \
-	-fill white -width [expr {$lwidth + 4}] \
+	-fill $colorBgLink -width [expr {$lwidth + 1}] \
 	-tags "link $link $lnode1 $lnode2"]
     .panwin.f1.c raise $newlink background
 
@@ -297,16 +326,24 @@ proc calcAngle { link } {
 #   interface. 
 #****
 proc updateIfcLabel { lnode1 lnode2 } {
+	upvar 0 ::cf::[set ::curcfg]::zoom zoom
     global showIfNames showIfIPaddrs showIfIPv6addrs
+    global themeselec
+    global currentTheme
+    global colorIPIfc
 
     set link [lindex [.panwin.f1.c gettags "link && $lnode1 && $lnode2"] 1]
     set ifc [ifcByPeer $lnode1 $lnode2]
+    # new variables
+    set zoomtext "[expr {int($zoom * 9)}]"
+    set sizetext "$zoomtext" 
     if { [nodeType $lnode1] == "extelem" } {
 	set ifcs [getNodeExternalIfcs $lnode1]
 	set ifc [lindex [lsearch -inline -exact -index 0 $ifcs "$ifc"] 1]
     }
     set ifipv4addr [getIfcIPv4addr $lnode1 $ifc]
     set ifipv6addr [getIfcIPv6addr $lnode1 $ifc]
+
     if { $ifc == 0 } {
 	set ifc ""
     }
@@ -334,8 +371,10 @@ proc updateIfcLabel { lnode1 lnode2 } {
 	    set str "$str\r[set elem]"
 	}
     }
-    .panwin.f1.c itemconfigure "interface && $lnode1 && $link" \
-	-text $str
+    #.panwin.f1.c itemconfigure "interface && $lnode1 && $link"
+	#-text $str
+	.panwin.f1.c itemconfigure "interface && $lnode1 && $link" \
+		-fill $colorIPIfc -text $str -font "-size $sizetext"
 }
 
 #****f* editor.tcl/updateLinkLabel
@@ -647,8 +686,8 @@ proc changeIconPopup {} {
     toplevel $chicondialog
     wm transient $chicondialog .
     wm resizable $chicondialog 0 0
-    wm title $chicondialog "Set custom icon"
-    wm iconname $chicondialog "Set custom icon"
+    wm title $chicondialog [mc "Set custom icon"]
+    wm iconname $chicondialog [mc "Set custom icon"]
 
     set wi [ttk::frame $chicondialog.changebgframe]
     
@@ -662,14 +701,14 @@ proc changeIconPopup {} {
     #right pane definition
     ttk::frame $wi.iconconf.right.spacer -height 20
     pack $wi.iconconf.right.spacer -fill both
-    ttk::label $wi.iconconf.right.l -text "Icon preview"
+    ttk::label $wi.iconconf.right.l -text [mc "Icon preview"]
     pack $wi.iconconf.right.l -anchor center
     
     set prevcan [canvas $wi.iconconf.right.pc -bd 0 -relief sunken -highlightthickness 0 \
     		-width 100 -height 100 -background white]
     pack $prevcan -anchor center
     
-    ttk::label $wi.iconconf.right.l2 -text "Size:"
+    ttk::label $wi.iconconf.right.l2 -text [mc "Size:"]
     pack $wi.iconconf.right.l2 -anchor center
     
     #left pane definition
@@ -693,13 +732,14 @@ proc changeIconPopup {} {
     grid columnconfig $wi.iconconf.left.up.grid 0 -weight 1
     grid rowconfigure $wi.iconconf.left.up.grid 0 -weight 1
     
-    $tree heading #0 -text "Image name"
+    $tree heading #0 -text [mc "Image name"]
     $tree column #0 -width 100 -minwidth 100 
     $tree heading type -text "Type" 
     $tree column type -width 90 -stretch 0 -minwidth 90
     focus $tree
     
-    foreach file [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.gif] {
+    ###foreach file [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.gif]
+	foreach file [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.svg] {
 	set filename [lindex [split $file /] end]
 	$tree insert {} end -id $file -text $filename -values [list "library icon"] \
 	  -tags "$file"
@@ -718,8 +758,8 @@ proc changeIconPopup {} {
 	       set iconsrcfile $img"
 	}
     }
-    
-    foreach file [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.gif] {
+    #foreach file [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.gif]
+	foreach file [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.svg] {
 	$tree tag bind $file <Key-Up> \
 	    "if {![string equal {} [$tree prev $file]]} {
 		updateIconPreview $prevcan $wi.iconconf.right.l2 [$tree prev $file]
@@ -732,7 +772,8 @@ proc changeIconPopup {} {
 	     }"
     }
     
-    set first [lindex [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.gif] 0]
+    #set first [lindex [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.gif] 0]
+    set first [lindex [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.svg] 0]
     $tree selection set $first
     $tree focus $first
         
@@ -755,7 +796,7 @@ proc changeIconPopup {} {
     #center left frame with label
     ttk::frame $wi.iconconf.left.center
     pack $wi.iconconf.left.center -anchor w
-    ttk::label $wi.iconconf.left.center.l -text "Custom icon file:"
+    ttk::label $wi.iconconf.left.center.l -text [mc "Custom icon file:"]
     
     #down left frame with entry and button
     ttk::frame $wi.iconconf.left.down
@@ -767,13 +808,15 @@ proc changeIconPopup {} {
     
     
     ttk::entry $wi.iconconf.left.down.left.e -width 25 -textvariable iconFile
-    ttk::button $wi.iconconf.left.down.right.b -text "Browse" -width 8 \
+    ttk::button $wi.iconconf.left.down.right.b -text [mc "Browse"] -width 8 \
 	-command {
 	    set fType {
 		{{All Images} {.gif}  {}}
 		{{All Images} {.png}  {}}
+		{{All Images} {.svg}  {}}
 		{{Gif Images} {.gif}  {}}
 		{{PNG Images} {.png} {}}
+		{{SVG Images} {.svg}  {}}
 	    }
 #		{{All Images} {.jpeg} {}}
 #		{{All Images} {.jpg}  {}}
@@ -801,7 +844,7 @@ proc changeIconPopup {} {
 		    set iconsrcfile ""
 		    $wi.iconconf.left.down.left.e delete 0 end
 		    $wi.iconconf.left.down.left.e insert 0 "$iconsrcfile"
-		    $imgsize configure -text "Size:"
+		    $imgsize configure -text [mc "Size:"]
 		    tk_dialog .dialog1 "IMUNES error" \
 		    "Error: Icon dimensions can't be bigger than 100x100. This image is $image_w*$image_h." \
 		    info 0 Dismiss
@@ -831,11 +874,11 @@ proc changeIconPopup {} {
     #lower frame that contains buttons
     ttk::frame $wi.buttons
     pack $wi.buttons -side bottom -fill x -pady 2m
-    ttk::button $wi.buttons.apply -text "Apply" -command {
+    ttk::button $wi.buttons.apply -text [mc "Apply"] -command {
 	    popupIconApply $chicondialog $iconsrcfile
     }
-    ttk::button $wi.buttons.cancel -text "Cancel" -command "destroy $chicondialog"
-    ttk::button $wi.buttons.remove -text "Remove custom icon" -command \
+    ttk::button $wi.buttons.cancel -text [mc "Cancel"] -command "destroy $chicondialog"
+    ttk::button $wi.buttons.remove -text [mc "Remove custom icon"] -command \
 	 "destroy $chicondialog; setDefaultIcon"
     pack $wi.buttons.remove $wi.buttons.cancel $wi.buttons.apply -side right -expand 1
     
@@ -942,10 +985,16 @@ proc updateCustomIconReferences {} {
 #   Updates icon size.
 #****
 proc updateIconSize {} {
+  upvar 0 ::cf::[set ::curcfg]::zoom zoom
   global all_modules_list
   foreach b $all_modules_list {
     global $b iconSize
-    set $b [image create photo -file [$b.icon $iconSize]]
+    ###set $b [image create photo -file [$b.icon $iconSize]]
+    set $b [image create photo $b -file [$b.icon $iconSize] -format {svg -scaletoheight 40}]
+    set height "[expr {40 * $zoom}]"
+    #puts "$zoom"
+    set imageHeight [image height $b]
+    $b configure -format [list svg -scale [expr {double($height) / $imageHeight}]]
   }
 }
 
