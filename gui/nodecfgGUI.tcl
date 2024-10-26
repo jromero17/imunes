@@ -78,6 +78,7 @@ proc nodeConfigGUI { c node } {
 # INPUTS
 #   * c -- tk canvas
 #****
+
 proc configGUI_createConfigPopupWin { c } {
     global wi debug
     set wi .popup
@@ -423,7 +424,7 @@ proc configGUI_refreshIfcsTree { wi node } {
     $wi delete [$wi children {}]
     #Creating new items
     $wi insert {} end -id interfaces -text \
-	"Physical Interfaces" -open true -tags interfaces
+	[mc "Physical Interfaces"] -open true -tags interfaces
     $wi focus interfaces
     $wi selection set interfaces
 
@@ -1553,9 +1554,9 @@ proc configGUI_routingModel { wi node } {
     ttk::frame $wi.routing -relief groove -borderwidth 2 -padding 2
     set w $wi.routing
     ttk::frame $w.model -padding 2
-    ttk::label $w.model.label -text "Model:"
+    ttk::label $w.model.label -text [mc "Model:"]
     ttk::frame $w.protocols -padding 2
-    ttk::label $w.protocols.label -text "Protocols:"
+    ttk::label $w.protocols.label -text [mc "Protocols:"]
 
     ttk::checkbutton $w.protocols.rip -text "rip" -variable ripEnable
     ttk::checkbutton $w.protocols.ripng -text "ripng" -variable ripngEnable
