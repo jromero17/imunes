@@ -25,7 +25,6 @@
 
 # $Id: extnat.tcl 63 2023-11-01 17:45:50Z dsalopek $
 
-
 #****h* imunes/extnat.tcl
 # NAME
 #  extnat.tcl -- defines extnat specific procedures
@@ -109,13 +108,13 @@ proc $MODULE.icon { size } {
     global ROOTDIR LIBDIR
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/extnat.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/extnat.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/extnat.gif
+	return $ROOTDIR/$LIBDIR/icons/small/extnat.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/extnat.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/extnat.svg
       }
     }
 }
