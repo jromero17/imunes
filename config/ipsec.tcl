@@ -25,7 +25,6 @@
 
 # $Id: ipsec.tcl 60 2013-10-03 09:05:13Z denis $
 
-
 #****f* ipsec.tcl/editIpsecCfg
 # NAME
 #   editIpsecCfg -- change or delete ipsec-config
