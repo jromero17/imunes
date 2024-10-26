@@ -25,8 +25,6 @@
 
 # $Id: genericrouter.tcl 130 2015-02-24 09:52:19Z valter $
 
-
-
 #****h* imunes/genericrouter.tcl
 # NAME
 #  genericrouter.tcl -- defines router specific procedures
@@ -132,13 +130,13 @@ proc $MODULE.icon { size } {
     global ROOTDIR LIBDIR
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/router.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/router.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/router.gif
+	return $ROOTDIR/$LIBDIR/icons/small/router.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/router.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/router.svg
       }
     }
 }
@@ -253,8 +251,8 @@ proc $MODULE.configGUI { c node } {
     set guielements {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "router configuration"
-    configGUI_nodeName $wi $node "Node name:"
+    wm title $wi [mc "router configuration"]
+    configGUI_nodeName $wi $node [mc "Node name:"]
 
     set tabs [configGUI_addNotebook $wi $node {"Configuration" "Interfaces" "IPsec"}]
     set configtab [lindex $tabs 0]
