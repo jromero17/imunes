@@ -28,7 +28,6 @@
 
 # $Id: lanswitch.tcl 129 2015-02-13 11:14:44Z valter $
 
-
 #****h* imunes/lanswitch.tcl
 # NAME
 #  lanswitch.tcl -- defines lanswitch specific procedures
@@ -110,13 +109,13 @@ proc $MODULE.icon {size} {
     global ROOTDIR LIBDIR
     switch $size {
       normal {
-	return $ROOTDIR/$LIBDIR/icons/normal/lanswitch.gif
+	return $ROOTDIR/$LIBDIR/icons/normal/lanswitch.svg
       }
       small {
-	return $ROOTDIR/$LIBDIR/icons/small/lanswitch.gif
+	return $ROOTDIR/$LIBDIR/icons/small/lanswitch.svg
       }
       toolbar {
-	return $ROOTDIR/$LIBDIR/icons/tiny/lanswitch.gif
+	return $ROOTDIR/$LIBDIR/icons/tiny/lanswitch.svg
       }
     }
 }
@@ -264,8 +263,8 @@ proc $MODULE.configGUI { c node } {
     set guielements {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "lanswitch configuration"
-    configGUI_nodeName $wi $node "Node name:"
+    wm title $wi [mc "lanswitch configuration"]
+    configGUI_nodeName $wi $node [mc "Node name:"]
 
     configGUI_addPanedWin $wi
     set treecolumns {"QLen Queue len" "QDisc Queue disc" "QDrop Queue drop"}
