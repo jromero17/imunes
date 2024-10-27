@@ -38,10 +38,13 @@ lib/imunes/gui/widgets.tcl
 lib/imunes/helpers.tcl
 lib/imunes/icons/imunes_icon128.png
 lib/imunes/icons/imunes_icon16.gif
+lib/imunes/icons/imunes_icon256.5.svg
+lib/imunes/icons/imunes_icon256.6.svg
 lib/imunes/icons/imunes_icon256.png
 lib/imunes/icons/imunes_icon32.gif
 lib/imunes/icons/imunes_icon64.png
 lib/imunes/icons/imunes_logo128.png
+lib/imunes/icons/imunes_logo2.1.svg
 lib/imunes/icons/normal/cloud.gif
 lib/imunes/icons/normal/ext.gif
 lib/imunes/icons/normal/extnat.gif
