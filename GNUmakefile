@@ -27,7 +27,7 @@ BASEFILES =	COPYRIGHT README.md VERSION
 CONFIGFILES =	$(wildcard config/*.tcl)
 GUIFILES =	$(wildcard gui/*.tcl)
 GUIFILESMSGS =  $(wildcard gui/msgs/*.msg)
-GUIDIRAYU = $(wildcard gui/ayuda/*.pdf)
+#GUIDIRAYU = $(wildcard gui/ayuda/*.pdf)
 NODESFILES =	$(wildcard nodes/*.tcl)
 RUNTIMEFILES =	$(wildcard runtime/*.tcl)
 PATCHESFILES =	$(wildcard src/patches/*)
@@ -109,7 +109,7 @@ endif
 	cp $(GUIFILESMSGS) $(GUIDIRMSGS)
 
 	mkdir -p $(GUIDIRAYU)
-	cp $(GUIFILESAYU) $(GUIDIRAYU)
+	#cp $(GUIFILESAYU) $(GUIDIRAYU)
 
 	mkdir -p $(NODESDIR)
 	cp $(NODESFILES) $(NODESDIR)
