@@ -987,25 +987,45 @@ proc button3node { c x y } {
 		.button3menu add command -label [mc "Server Web" \
 		-state disabled
 	}
-        ###----------------------------------------------------------------------
-        # Propuesta de implementacion
-        # nginx (Se requiere instalar nginx en imunes vroot para que funcione)
-        #.button3menu.nginx delete 0 end
-        #if {[checkForExternalApps "startxcmd"] == 0 && \
-        #[checkForApplications $node "nginx"] == 0} {
-        #        .button3menu add separator
-        #        .button3menu add cascade -label [mc "Server Nginx"] -menu \
-        #        .button3menu.nginx
-        #        .button3menu.nginx add command -label [mc "Start"] \
-        #                -command "startXappOnNode $node \"service nginx onestart \""
-        #        .button3menu.nginx add command -label [mc "Stop"] \
-        #                -command "startXappOnNode $node \"/usr/local/etc/rc.d/nginx onestop \""
-        #        .button3menu.nginx add command -label [mc "Restart"] \
-        #                -command "startXappOnNode $node \"/usr/local/etc/rc.d/nginx onerestart \""
-        #} else {
-        #        .button3menu add command -label [mc "Server Nginx" \
-        #        -state disabled
-        #}
+    ###----------------------------------------------------------------------
+    # Propuesta de implementacion
+    # nginx (Se requiere instalar nginx en imunes vroot para que funcione)
+    .button3menu.nginx delete 0 end
+    if {[checkForExternalApps "startxcmd"] == 0 && \
+    [checkForApplications $node "nginx"] == 0} {
+            .button3menu add separator
+            .button3menu add cascade -label [mc "Server Nginx"] -menu \
+            .button3menu.nginx
+            .button3menu.nginx add command -label [mc "Start"] \
+                    -command "startXappOnNode $node \"service nginx onestart \""
+            .button3menu.nginx add command -label [mc "Stop"] \
+                    -command "startXappOnNode $node \"/usr/local/etc/rc.d/nginx onestop \""
+            .button3menu.nginx add command -label [mc "Restart"] \
+                    -command "startXappOnNode $node \"/usr/local/etc/rc.d/nginx onerestart \""
+    } else {
+            .button3menu add command -label [mc "Server Nginx" \
+            -state disabled
+    }
+	#
+	###----------------------------------------------------------------------
+    # Propuesta de implementacion
+    # PHP84 (Se requiere instalar php84, php83, php82, php81 en imunes vroot para que funcione)
+    .button3menu.php delete 0 end
+    if {[checkForExternalApps "startxcmd"] == 0 && \
+    [checkForApplications $node "pnp"] == 0} {
+            .button3menu add separator
+            .button3menu add cascade -label "Active PHP" -menu \
+            .button3menu.php
+            .button3menu.php add command -label [mc "Start"] \
+                    -command "startXappOnNode $node \"service php_fpm onestart \""
+            .button3menu.php add command -label [mc "Stop"] \
+                    -command "startXappOnNode $node \"service php_fpm onestop \""
+            .button3menu.php add command -label [mc "Restart"] \
+                    -command "startXappOnNode $node \"service php_fpm onerestart \""
+    } else {
+            .button3menu add command -label "Active PHP" \
+            -state disabled
+    }
 	#
  	# Propuesta de implementacion
 	# Servicio DNS bind916 o bind918 named. (Se requiere instalar bind916 o bind918 en imunes vroot para que funcione)
