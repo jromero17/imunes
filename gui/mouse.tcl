@@ -64,7 +64,7 @@ proc removeGUILink { link atomic } {
     } else {
 	removeLink $link
     }
-    .panwin.f1.c delete $link
+    .panwin.f1.c [mc "delete"] $link
     if { $atomic == "atomic" } {
 	set changed 1
 	updateUndoLog
