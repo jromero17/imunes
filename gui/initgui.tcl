@@ -1639,6 +1639,7 @@ menu .button3menu.services -tearoff 0
 ### SIGUIENTES MENUS COLOCADO POR MI
 menu .button3menu.apachectl -tearoff 0
 menu .button3menu.nginx -tearoff 0
+menu .button3menu.php -tearoff 0
 menu .button3menu.named -tearoff 0
 menu .button3menu.dhcpd -tearoff 0
 menu .button3menu.dhcrelay -tearoff 0
