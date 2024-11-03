@@ -45,6 +45,8 @@ fi
 mkdir $VROOT_MASTER/usr/local/etc/snmp
 mkdir $VROOT_MASTER/usr/local/etc/openvpn
 
+configQuagga
+
 configFrr
 
 wiresharkGUIfix
