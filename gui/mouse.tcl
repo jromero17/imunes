@@ -1012,7 +1012,7 @@ proc button3node { c x y } {
     # PHP84 (Se requiere instalar php84, php83, php82, php81 en imunes vroot para que funcione)
     .button3menu.php delete 0 end
     if {[checkForExternalApps "startxcmd"] == 0 && \
-    [checkForApplications $node "pnp"] == 0} {
+    [checkForApplications $node "php"] == 0} {
             .button3menu add separator
             .button3menu add cascade -label "Active PHP" -menu \
             .button3menu.php
