@@ -27,6 +27,7 @@ proc removeFilterIfcRule { node ifc id } {
     netconfInsertSection $node $ifcfg
 }
 
+
 proc getFilterIfcAction { node ifc id } {
     foreach line [netconfFetchSection $node "interface $ifc"] {
 	if { [string trim [lindex [split $line :] 0]] == $id } {
