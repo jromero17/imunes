@@ -18,8 +18,8 @@ log () {
 # GLOBAL FOR EVERY VERSION
 ##########################
 # directories
-ROOTDIR=/usr/local
-LIBDIR=lib/imunes
+ROOTDIR="."
+LIBDIR=""
 IMUNESDIR=`pwd`
 cd ~
 HOMEDIR=`pwd`
@@ -315,14 +315,14 @@ wiresharkGUIfix () {
 
 configApache24 () {
     if [ -d "$VROOT_MASTER/usr/local/etc/apache24/" ]; then
-	cd $VROOT_MASTER/usr/local/etc/apache24/
- 	cp httpd.conf httpd.conf.backup
-  	#sed -i -e 's/#ServerName www.example.com:80/ServerName localhost/' /usr/local/etc/apache24/httpd.conf
-   	sed -i -e 's/#ServerName www.example.com:80/ServerName localhost/' httpd.conf
+        cd $VROOT_MASTER/usr/local/etc/apache24/
+        cp httpd.conf httpd.conf.backup
+        #sed -i -e 's/#ServerName www.example.com:80/ServerName localhost/' /usr/local/etc/apache24/httpd.conf
+        sed -i -e 's/#ServerName www.example.com:80/ServerName localhost/' httpd.conf
     else
-	log "ERR" "Apache24 not installed in \
-	$VROOT_MASTER/usr/local/etc/apache24/\nScript aborted."
-	exit 1
+        log "ERR" "Apache24 not installed in \
+        $VROOT_MASTER/usr/local/etc/apache24/\nScript aborted."
+        exit 1
     fi
 }
 
