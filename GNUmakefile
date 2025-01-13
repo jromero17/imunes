@@ -32,19 +32,19 @@ NODESFILES =	$(wildcard nodes/*.tcl)
 RUNTIMEFILES =	$(wildcard runtime/*.tcl)
 PATCHESFILES =	$(wildcard src/patches/*)
 
-VROOT =	$(wildcard scripts/*.sh scripts/*.bash)
+VROOT =	$(wildcard scripts/*.sh scripts/*.bash scripts/daemons)
 TOOLS =	$(filter-out $(VROOT), $(wildcard scripts/*))
 
-NODE_ICONS = frswitch.svg hub.svg lanswitch.svg rj45.svg cloud.svg host.svg ipfirewall.svg \
-	pc.svg router.svg click_l2.svg click_l3.svg stpswitch.svg filter.svg packgen.svg \
-	nat64.svg ext.svg extnat.svg
+NODE_ICONS = frswitch.svg hub.svg lanswitch.svg rj45.svg cloud.svg host.svg \
+	ipfirewall.svg pc.svg router.svg \
+	stpswitch.svg filter.svg packgen.svg nat64.svg ext.svg extnat.svg
 
 NORMAL_ICONS = $(NODE_ICONS)
 
 SMALL_ICONS = $(NODE_ICONS)
 
 TINY_ICONS = $(NODE_ICONS) link.svg minizoomin.svg minizoomout.svg play_start.svg play_stop.svg \
-		select.svg extnat.svg l2.svg l2.gif l3.svg l3.gif freeform.svg oval.svg rectangle.svg text.svg
+		select.svg ls.svg l2.gif l3.svg l3.gif freeform.svg oval.svg rectangle.svg text.svg
 
 ICONS = $(wildcard icons/imunes_*)
 
@@ -91,7 +91,7 @@ endif
 	mv $(BINDIR)/vlink.tcl $(BINDIR)/vlink
 
 	mkdir -p $(SCRIPTSDIR)
-	
+
 	for file in $(VROOT); do \
 	    sed -e "s,LIBDIR=\"\",LIBDIR=$(LIBDIR)," \
 		-e "s,ROOTDIR=\".\",ROOTDIR=$(PREFIX)," \
