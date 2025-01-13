@@ -38,7 +38,7 @@
 #  to a file or a string. This module also contains a function for returning 
 #  a new ID for nodes, links and canvases.
 #****
-#
+
 #****f* nodecfg.tcl/dumpputs
 # NAME
 #   dumpputs -- puts a string to a file or a string configuration 
@@ -89,11 +89,11 @@ proc dumpCfg { method dest } {
     upvar 0 ::cf::[set ::curcfg]::zoom zoom
     upvar 0 ::cf::[set ::curcfg]::image_list image_list
     # the globals bellow should be placed in a namespace as well
-    global showIfNames showNodeLabels showLinkLabels
-    global showIfIPaddrs showIfIPv6addrs
-    global showBkgImage showGrid showAnnotations
-    global iconSize
-    global hostsAutoAssign
+    global show_interface_names show_node_labels show_link_labels
+    global show_interface_ipv4 show_interface_ipv6
+    global show_background_image show_grid show_annotations
+    global icon_size
+    global auto_etc_hosts
 
     foreach node $node_list {
 	upvar 0 ::cf::[set ::curcfg]::$node lnode
@@ -109,7 +109,7 @@ proc dumpCfg { method dest } {
 		dumpputs $method $dest "    ipsec-config \{"
 		foreach line [lindex $element 1] {
 		    set header [lindex $line 0]
-		    if { $header == "local_cert" || $header == "local_key_file" || $header == "ipsec-logging"} {
+		    if { $header in "ca_cert local_cert local_key_file ipsec-logging" } {
 			dumpputs $method $dest "        $line"
 		    } elseif { $header == "configuration" } {
 			dumpputs $method $dest "        configuration \{"
@@ -200,43 +200,43 @@ proc dumpCfg { method dest } {
     dumpputs $method $dest "option show \{"
 
     # XXX - this needs to be refactored.
-    if {$showIfNames == 0} { 
-	dumpputs $method $dest "    interface_names no" 
+    if { $show_interface_names == 0 } {
+	dumpputs $method $dest "    interface_names no"
     } else {
 	dumpputs $method $dest "    interface_names yes" }
-    if {$showIfIPaddrs == 0} { 
-	dumpputs $method $dest "    ip_addresses no" 
+    if { $show_interface_ipv4 == 0 } {
+	dumpputs $method $dest "    ip_addresses no"
     } else {
 	dumpputs $method $dest "    ip_addresses yes" }
-    if {$showIfIPv6addrs == 0} { 
-	dumpputs $method $dest "    ipv6_addresses no" 
+    if { $show_interface_ipv6 == 0 } {
+	dumpputs $method $dest "    ipv6_addresses no"
     } else {
 	dumpputs $method $dest "    ipv6_addresses yes" }
-    if {$showNodeLabels == 0} { 
-	dumpputs $method $dest "    node_labels no" 
+    if { $show_node_labels == 0 } {
+	dumpputs $method $dest "    node_labels no"
     } else {
 	dumpputs $method $dest "    node_labels yes" }
-    if {$showLinkLabels == 0} { 
-	dumpputs $method $dest "    link_labels no" 
+    if { $show_link_labels == 0 } {
+	dumpputs $method $dest "    link_labels no"
     } else {
 	dumpputs $method $dest "    link_labels yes" }
-    if {$showBkgImage == 0} {
+    if { $show_background_image == 0 } {
 	dumpputs $method $dest "    background_images no"
     } else {
 	dumpputs $method $dest "    background_images yes" }
-    if {$showAnnotations == 0} {
+    if { $show_annotations == 0 } {
 	dumpputs $method $dest "    annotations no"
     } else {
 	dumpputs $method $dest "    annotations yes" }
-    if {$hostsAutoAssign == 0} {
+    if { $auto_etc_hosts == 0 } {
 	dumpputs $method $dest "    hostsAutoAssign no"
     } else {
 	dumpputs $method $dest "    hostsAutoAssign yes" }
-    if {$showGrid == 0} {
+    if { $show_grid == 0 } {
 	dumpputs $method $dest "    grid no"
     } else {
 	dumpputs $method $dest "    grid yes" }
-    dumpputs $method $dest "    iconSize $iconSize"
+    dumpputs $method $dest "    iconSize $icon_size"
     dumpputs $method $dest "    zoom $zoom"
     dumpputs $method $dest "\}"
     dumpputs $method $dest ""
@@ -278,11 +278,11 @@ proc loadCfg { cfg } {
     upvar 0 ::cf::[set ::curcfg]::IPv4UsedList IPv4UsedList
     upvar 0 ::cf::[set ::curcfg]::MACUsedList MACUsedList
     upvar 0 ::cf::[set ::curcfg]::etchosts etchosts
-    global showIfNames showNodeLabels showLinkLabels
-    global showIfIPaddrs showIfIPv6addrs
-    global showBkgImage showGrid showAnnotations
-    global iconSize
-    global hostsAutoAssign
+    global show_interface_names show_node_labels show_link_labels
+    global show_interface_ipv4 show_interface_ipv6
+    global show_background_image show_grid show_annotations
+    global icon_size
+    global auto_etc_hosts
     global execMode all_modules_list
 
     # Cleanup first
@@ -300,6 +300,10 @@ proc loadCfg { cfg } {
 	    continue
 	} elseif {"$object" == ""} {
 	    set object $entry
+	    if { $object == "annotation_list" } {
+		continue
+	    }
+
 	    upvar 0 ::cf::[set ::curcfg]::$object $object
 	    set $object {}
 	    if {"$class" == "node"} {
@@ -380,7 +384,7 @@ proc loadCfg { cfg } {
 			    foreach zline [split $value {
 }] {
 				set zline [string trimleft "$zline"]
-				if { [string first "local_cert" $zline] != -1 || [string first "local_key_file" $zline] != -1 } {
+				if { [string first "ca_cert" $zline] != -1 || [string first "local_cert" $zline] != -1 || [string first "local_key_file" $zline] != -1 } {
 				    lappend cfg $zline
 				} elseif { [string first "ipsec-logging" $zline] != -1 } {
 				    lappend cfg "$zline"
@@ -519,6 +523,9 @@ proc loadCfg { cfg } {
 			nodes {
 			    lappend $object "nodes {$value}"
 			}
+			ifaces {
+			    lappend $object "ifaces {$value}"
+			}
 			mirror {
 			    lappend $object "mirror $value"
 			}
@@ -591,72 +598,72 @@ proc loadCfg { cfg } {
 		    switch -exact -- $field {
 			interface_names {
 			    if { $value == "no" } {
-				set showIfNames 0
+				set show_interface_names 0
 			    } elseif { $value == "yes" } {
-				set showIfNames 1
+				set show_interface_names 1
 			    }
 			}
 			ip_addresses {
 			    if { $value == "no" } {
-				set showIfIPaddrs 0
+				set show_interface_ipv4 0
 			    } elseif { $value == "yes" } {
-				set showIfIPaddrs 1
+				set show_interface_ipv4 1
 			    }
 			}
 			ipv6_addresses {
 			    if { $value == "no" } {
-				set showIfIPv6addrs 0
+				set show_interface_ipv6 0
 			    } elseif { $value == "yes" } {
-				set showIfIPv6addrs 1
+				set show_interface_ipv6 1
 			    }
 			}
 			node_labels {
 			    if { $value == "no" } {
-				set showNodeLabels 0
+				set show_node_labels 0
 			    } elseif { $value == "yes" } {
-				set showNodeLabels 1
+				set show_node_labels 1
 			    }
 			}
 			link_labels {
 			    if { $value == "no" } {
-				set showLinkLabels 0
+				set show_link_labels 0
 			    } elseif { $value == "yes" } {
-				set showLinkLabels 1
+				set show_link_labels 1
 			    }
 			}
 			background_images {
 			    if { $value == "no" } {
-				set showBkgImage 0
+				set show_background_image 0
 			    } elseif { $value == "yes" } {
-				set showBkgImage 1
+				set show_background_image 1
 			    }
 			}
 			annotations {
 			    if { $value == "no" } {
-				set showAnnotations 0
+				set show_annotations 0
 			    } elseif { $value == "yes" } {
-				set showAnnotations 1
+				set show_annotations 1
 			    }
 			}
 			grid {
 			    if { $value == "no" } {
-				set showGrid 0
+				set show_grid 0
 			    } elseif { $value == "yes" } {
-				set showGrid 1
+				set show_grid 1
 			    }
 			}
 			hostsAutoAssign {
 			    if { $value == "no" } {
-				set hostsAutoAssign 0
+				set auto_etc_hosts 0
 			    } elseif { $value == "yes" } {
-				set hostsAutoAssign 1
+				set auto_etc_hosts 1
 			    }
 			}
 			zoom {
 			    set zoom $value
 			}
 			iconSize {
-			    set iconSize $value
+			    set icon_size $value
 			}
 		    }
 		} elseif {"$class" == "annotation"} {
@@ -740,7 +747,7 @@ proc loadCfg { cfg } {
     set IPv4UsedList ""
     set MACUsedList ""
     foreach node $node_list {
-	set nodeType [typemodel $node]
+	set nodeType [nodeType $node]
 	if { $nodeType in "extelem" } {
 	    continue
 	}
@@ -757,51 +764,93 @@ proc loadCfg { cfg } {
 	    exit
 	}
 	if { "lo0" ni [logIfcList $node] && \
-		[[typemodel $node].layer] == "NETWORK"} {
+		[$nodeType.layer] == "NETWORK"} {
 	    setLogIfcType $node lo0 lo
-	    setIfcIPv4addr $node lo0 "127.0.0.1/8"
-	    setIfcIPv6addr $node lo0 "::1/128"
+	    setIfcIPv4addrs $node lo0 "127.0.0.1/8"
+	    setIfcIPv6addrs $node lo0 "::1/128"
 	}
 	# Speeding up auto renumbering of MAC, IPv4 and IPv6 addresses by remembering
 	# used addresses in lists.
 	foreach iface [ifcList $node] {
-	    set addr [getIfcIPv6addr $node $iface]
-	    if { $addr != "" } { lappend IPv6UsedList [ip::contract [ip::prefix $addr]] }
-	    set addr [getIfcIPv4addr $node $iface]
-	    if { $addr != "" } { lappend IPv4UsedList $addr }
-	    lappend MACUsedList [getIfcMACaddr $node $iface]
+	    foreach addr [getIfcIPv6addrs $node $iface] {
+		lassign [split $addr "/"] addr mask
+		lappend IPv6UsedList "[ip::contract [ip::prefix $addr]]/$mask"
+	    }
+
+	    foreach addr [getIfcIPv4addrs $node $iface] {
+		lappend IPv4UsedList $addr
+	    }
+
+	    set addr [getIfcMACaddr $node $iface]
+	    if { $addr != "" } { lappend MACUsedList $addr }
 	}
+    }
+
+    # older .imn files have only one link per node pair, so match links with interfaces
+    foreach link $link_list {
+	if { [linkPeersIfaces $link] != {} } {
+	    # if one link has ifaces, then all of them do too
+	    return
+	}
+
+	upvar 0 ::cf::[set ::curcfg]::$link $link
+
+	lassign [linkPeers $link] node1 node2
+	set iface1 [ifcByPeer $node1 $node2]
+	set iface2 [ifcByPeer $node2 $node1]
+
+	lappend $link "ifaces {$iface1 $iface2}"
     }
 }
 
 #****f* nodecfg.tcl/newObjectId
 # NAME
-#   newObjectId -- new object Id 
+#   newObjectId -- new object Id
 # SYNOPSIS
-#   set obj_id [newObjectId $type]
+#   set obj_id [newObjectId $elem_list $prefix]
 # FUNCTION
-#   Returns the Id for a new object of the defined type. Supported types
-#   are node, link and canvas. The Id is in the form $mark$number. $mark is
-#   the first letter of the given type and $number is the first available
-#   number to that can be used for id. 
+#   Returns the ID for a new object of with the defined $prefix. The ID is in
+#   the form $prefix$number. $number is the first available number from the
+#   given list (all the elements of the list share the same prefix and the list
+#   does not need to be sorted beforehand).
 # INPUTS
-#   * type -- the type of the new object. Can be node, link or canvas.
+#   * elem_list -- the list of existing elements
+#   * prefix -- the prefix of the new object.
 # RESULT
-#   * obj_id -- object Id in the form $mark$number. $mark is the 
-#     first letter of the given type and $number is the first available number
-#     to that can be used for id. 
+#   * obj_id -- object ID in the form $prefix$number
 #****
-proc newObjectId { type } {
-    upvar 0 ::cf::[set ::curcfg]::node_list node_list
-    upvar 0 ::cf::[set ::curcfg]::link_list link_list
-    upvar 0 ::cf::[set ::curcfg]::annotation_list annotation_list
-    upvar 0 ::cf::[set ::curcfg]::canvas_list canvas_list
-    global cfg_list
-
-    set mark [string range [set type] 0 0]
-    set id 0
-    while {[lsearch [set [set type]_list] "$mark$id"]  != -1} {
-	incr id
+proc newObjectId { elem_list prefix } {
+    set len [llength $elem_list]
+    if { $len == 0 } {
+	return ${prefix}0
     }
-    return $mark$id
+
+    set sorted_list [lsort -dictionary $elem_list]
+
+    # Initial interval - the start to the middle of the list
+    set start 0
+    set end [expr $len - 1]
+    set mid [expr $len / 2]
+    set lastmid -1
+
+    if { "$prefix$end" == [lindex $sorted_list end] } {
+	return $prefix[expr $end + 1]
+    }
+
+    while { $mid != $lastmid } {
+	set val [lindex $sorted_list $mid]
+	set idx [lsearch -dictionary -bisect $sorted_list $val]
+	regsub $prefix $val "" val
+
+	if { [expr $mid < $val] } {
+	    set end $mid
+	} else {
+	    set start [expr $mid + 1]
+	}
+
+	set lastmid $mid
+	set mid [expr ($start + $end ) / 2]
+    }
+
+    return $prefix$mid
 }
