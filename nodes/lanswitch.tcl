@@ -28,6 +28,7 @@
 
 # $Id: lanswitch.tcl 129 2015-02-13 11:14:44Z valter $
 
+
 #****h* imunes/lanswitch.tcl
 # NAME
 #  lanswitch.tcl -- defines lanswitch specific procedures
@@ -169,12 +170,12 @@ proc $MODULE.layer {} {
 #   set layer [lanswitch.virtlayer]
 # FUNCTION
 #   Returns the layer on which the lanswitch node is instantiated 
-#   i.e. returns NETGRAPH. 
+#   i.e. returns NATIVE. 
 # RESULT
-#   * layer -- set to NETGRAPH
+#   * layer -- set to NATIVE
 #****
 proc $MODULE.virtlayer {} {
-    return NETGRAPH
+    return NATIVE
 }
 
 #****f* lanswitch.tcl/lanswitch.instantiate
