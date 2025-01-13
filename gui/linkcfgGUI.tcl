@@ -25,6 +25,7 @@
 
 # $Id: linkcfgGUI.tcl 67 2013-10-04 08:31:52Z denis $
 
+
 #****f* linkcfgGUI.tcl/linkConfigGUI
 # NAME
 #   linkConfigGUI -- link configuration GUI
@@ -223,7 +224,7 @@ proc configGUI_linkConfig { wi link param label } {
     global configelements
     lappend configelements $param
     if { $param == "Bandwidth" } {
-        set from 0; set to 1000000000; set inc 1000
+        set from 0; set to 1000000000000; set inc 1000
     } elseif { $param == "Delay" } {
         set from 0; set to 10000000; set inc 5
     } elseif { $param == "BER" } {
@@ -359,10 +360,10 @@ proc linkJitterConfigGUI { c link } {
     $wi.down.editor insert end [join [getLinkJitterDownstream $link] "\n"]
 
     set val [getLinkJitterHoldUpstream $link]
-    if {$val == ""} { set val 0 }
+    if { $val == "" } { set val 0 }
     $wi.up.holdval insert 0 $val
     set val [getLinkJitterHoldDownstream $link]
-    if {$val == ""} { set val 0 }
+    if { $val == "" } { set val 0 }
     $wi.down.holdval insert 0 $val
 
     grid $wi.up.label -row 0 -column 0 -in $wi.up -sticky w -pady 3
@@ -422,13 +423,13 @@ proc applyJitterLink { wi link } {
     set jdown ""
 
     foreach line $jitt_up {
-	if {[string is double $line] && $line != "" && $line < 10000} {
+	if { [string is double $line] && $line != "" && $line < 10000 } {
 	    lappend jup [expr round($line*1000)/1000.0]
 	}
     }
 
     foreach line $jitt_down {
-	if {[string is double $line] && $line != "" && $line < 10000} {
+	if { [string is double $line] && $line != "" && $line < 10000 } {
 	    lappend jdown [expr round($line*1000)/1000.0]
 	}
     }
