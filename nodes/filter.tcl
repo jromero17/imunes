@@ -25,6 +25,7 @@
 # This work was supported in part by Croatian Ministry of Science
 # and Technology through the research contract #IP-2003-143.
 #
+
 #****h* imunes/filter.tcl
 # NAME
 #  filter.tcl -- defines filter.specific procedures
@@ -110,13 +111,13 @@ proc $MODULE.layer {} {
 #   set layer [filter.virtlayer]
 # FUNCTION
 #   Returns the layer on which the filter is instantiated
-#   i.e. returns NETGRAPH. 
+#   i.e. returns NATIVE. 
 # RESULT
-#   * layer -- set to NETGRAPH
+#   * layer -- set to NATIVE
 #****
 
 proc $MODULE.virtlayer {} {
-    return NETGRAPH
+    return NATIVE
 }
 
 #****f* filter.tcl/filter.instantiate
@@ -252,7 +253,7 @@ proc $MODULE.configGUI { c node } {
     set filterguielements {}
 
     if { [ifcList $node] == "" } {
-	tk_dialog .dialog1 [mc "IMUNES warning"] \
+	tk_dialog .dialog1 "IMUNES warning" \
 	    "This node has no interfaces." \
 	    info 0 Dismiss
 	return
