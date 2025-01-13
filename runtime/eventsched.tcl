@@ -67,7 +67,6 @@ proc stopEventScheduling {} {
 # FUNCTION
 #   Function that start scheduling events accoring to scheduling data.
 #****
-
 proc evsched {} {
     global evlogfile
     # XXX eid should be arg to evsched()
@@ -210,8 +209,7 @@ proc evsched {} {
 		set peers [linkPeers $object]
 		set n0 [lindex $peers 0]
 		set n1 [lindex $peers 1]
-		set ifc0 [ifcByPeer $n0 $n1]
-		set ifc1 [ifcByPeer $n1 $n0]
+		lassign [linkPeersIfaces $object] ifc0 ifc1
 
 		set delay [getLinkDelay $object]
 		if { $delay == "" } {
@@ -424,8 +422,8 @@ proc elementsEventsEditor {} {
     catch {destroy $eventsPopup}
     toplevel $eventsPopup
     wm transient $eventsPopup .
-    wm title $eventsPopup  [mc "Events editor"]
-    wm iconname $eventsPopup [mc "Events editor"]
+    wm title $eventsPopup "Events editor"
+    wm iconname $eventsPopup "Events editor"
     
     ttk::frame $eventsPopup.events
     pack $eventsPopup.events -fill both -expand 1
@@ -475,7 +473,7 @@ proc elementsEventsEditor {} {
 #     $pwi.left.tree insert {} end -id nodes -text "Nodes" -open true -tags nodes
 #     foreach node [lsort -dictionary $node_list] {
 # 	set type [nodeType $node]
-# 	if { $type != "pseudo" && [[typemodel $node].layer] == "NETWORK"} {
+# 	if { $type != "pseudo" && [[nodeType $node].layer] == "NETWORK"} {
 # 	    $pwi.left.tree insert nodes end -id $node -text "[getNodeName $node]" -open false -tags $node
 # 	    lappend eventnodetags $node
 # 	}
