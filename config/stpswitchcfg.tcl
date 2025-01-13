@@ -490,7 +490,6 @@ proc getBridgeIfcMaxaddr { node ifc } {
 	}
     }
 }
-
 proc setBridgeIfcMaxaddr { node ifc value } {
     set ifcfg [list "interface $ifc"]
     foreach line [netconfFetchSection $node "interface $ifc"] {
