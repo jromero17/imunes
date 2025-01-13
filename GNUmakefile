@@ -44,7 +44,7 @@ NORMAL_ICONS = $(NODE_ICONS)
 SMALL_ICONS = $(NODE_ICONS)
 
 TINY_ICONS = $(NODE_ICONS) link.svg minizoomin.svg minizoomout.svg play_start.svg play_stop.svg \
-		select.svg ls.svg l2.gif l3.svg l3.gif freeform.svg oval.svg rectangle.svg text.svg
+		select.svg l2.gif l3.svg l3.gif freeform.svg oval.svg rectangle.svg text.svg
 
 ICONS = $(wildcard icons/imunes_*)
 
