@@ -146,17 +146,39 @@ if {! [info exists eid_base]} {
     set eid_base [genExperimentId]
 }
 
+set option_defaults {
+    auto_etc_hosts		0
+}
+
+set gui_option_defaults {
+    show_interface_names	1
+    show_interface_ipv4		1
+    show_interface_ipv6		1
+    show_node_labels		1
+    show_link_labels		1
+    show_background_image	0
+    show_annotations		1
+    show_grid			1
+    icon_size			"normal"
+    zoom			1
+}
+
+foreach {option default_value} [concat $option_defaults $gui_option_defaults] {
+    global $option
+    set $option $default_value
+}
+
 # Set default L2 node list
 set l2nodes "hub lanswitch rj45 stpswitch filter packgen ext extnat"
 # Set default L3 node list
-set l3nodes "genericrouter frr quagga static host pc nat64 extelem"
+set l3nodes "router host pc nat64 extelem"
 # Set default supported router models
 set supp_router_models "frr quagga static"
 
 if { $isOSlinux } {
     # Limit default nodes on linux
     set l2nodes "hub lanswitch rj45 ext extnat"
-    set l3nodes "genericrouter frr quagga static pc host nat64 extelem"
+    set l3nodes "router pc host nat64 extelem"
     set supp_router_models "frr quagga static"
     safeSourceFile $ROOTDIR/$LIBDIR/runtime/linux.tcl
     if { $initMode == 1 } {
@@ -236,7 +258,7 @@ if { $isOSwin } {
 }
 
 if { !$isOSwin } {
-    catch {exec convert -version | head -1 | cut -d " " -f 1,2,3} imInfo
+    catch {exec magick -version | head -1 | cut -d " " -f 1,2,3} imInfo
 } else {
     set imInfo $env(PATH)
 }
@@ -295,7 +317,7 @@ if {$execMode == "interactive"} {
 	}
 	close $fileId
 
-	set curcfg [newObjectId cfg]
+	set curcfg [newObjectId $cfg_list "cfg"]
 	lappend cfg_list $curcfg
 	namespace eval ::cf::[set curcfg] {}
 
@@ -318,7 +340,7 @@ if {$execMode == "interactive"} {
 	    }
 	    close $fileId
 
-	    set curcfg [newObjectId cfg]
+	    set curcfg [newObjectId $cfg_list "cfg"]
 	    lappend cfg_list $curcfg
 	    namespace eval ::cf::[set curcfg] {}
 	    upvar 0 ::cf::[set ::curcfg]::eid eid
