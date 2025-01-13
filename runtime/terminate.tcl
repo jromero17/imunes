@@ -25,6 +25,7 @@
 # This work was supported in part by the Croatian Ministry of Science
 # and Technology through the research contract #IP-2003-143.
 #
+
 #****f* exec.tcl/deleteExperimentFiles
 # NAME
 #   deleteExperimentFiles -- delete experiment files
@@ -97,11 +98,11 @@ proc terminateL2L3Nodes { eid nodes nodeCount w } {
     foreach node $nodes {
 	displayBatchProgress $batchStep $nodeCount
 
-	if { [info procs [typemodel $node].shutdown] != "" } {
+	if { [info procs [nodeType $node].shutdown] != "" } {
 	    try {
-		[typemodel $node].shutdown $eid $node
+		[nodeType $node].shutdown $eid $node
 	    } on error err {
-		return -code error "Error in '[typemodel $node].shutdown $eid $node': $err"
+		return -code error "Error in '[nodeType $node].shutdown $eid $node': $err"
 	    }
 	}
 	pipesExec ""
@@ -132,9 +133,9 @@ proc releaseExternalIfcs { eid extifcs extifcsCount w } {
 	displayBatchProgress $batchStep $extifcsCount
 
 	try {
-	    [typemodel $node].destroy $eid $node
+	    [nodeType $node].destroy $eid $node
 	} on error err {
-	    return -code error "Error in '[typemodel $node].destroy $eid $node': $err"
+	    return -code error "Error in '[nodeType $node].destroy $eid $node': $err"
 	}
 	pipesExec ""
 
@@ -218,9 +219,9 @@ proc destroyL2Nodes { eid nodes nodeCount w } {
 	displayBatchProgress $batchStep $nodeCount
 
 	try {
-	    [typemodel $node].destroy $eid $node
+	    [nodeType $node].destroy $eid $node
 	} on error err {
-	    return -code error "Error in '[typemodel $node].destroy $eid $node': $err"
+	    return -code error "Error in '[nodeType $node].destroy $eid $node': $err"
 	}
 
 	incr batchStep
@@ -249,9 +250,9 @@ proc destroyL3Nodes { eid nodes nodeCount w } {
 	displayBatchProgress $batchStep $nodeCount
 
 	try {
-	    [typemodel $node].destroy $eid $node
+	    [nodeType $node].destroy $eid $node
 	} on error err {
-	    return -code error "Error in '[typemodel $node].destroy $eid $node': $err"
+	    return -code error "Error in '[nodeType $node].destroy $eid $node': $err"
 	}
 	pipesExec ""
 
@@ -328,10 +329,10 @@ proc terminateAllNodes { eid } {
     set pseudoNodesCount 0
     foreach node $node_list {
 	if { [nodeType $node] != "pseudo" } {
-	    if { [[typemodel $node].virtlayer] == "NETGRAPH" } {
-		if { [typemodel $node] == "rj45" } {
+	    if { [[nodeType $node].virtlayer] == "NATIVE" } {
+		if { [nodeType $node] == "rj45" } {
 		    lappend extifcs $node
-		} elseif { [typemodel $node] == "extnat" } {
+		} elseif { [nodeType $node] == "extnat" } {
 		    lappend l3nodes $node
 		} else {
 		    lappend l2nodes $node
@@ -375,7 +376,7 @@ proc terminateAllNodes { eid } {
 
     try {
 	statline "Stopping services for NODESTOP hook..."
-	services stop "NODESTOP"
+	services stop "NODESTOP" "bkg" $allNodes
 
 	statline "Stopping all nodes..."
 	pipesCreate
@@ -390,7 +391,7 @@ proc terminateAllNodes { eid } {
 	pipesClose
 
 	statline "Stopping services for LINKDEST hook..."
-	services stop "LINKDEST"
+	services stop "LINKDEST" "bkg" $allNodes
 
 	statline "Destroying links..."
 	pipesCreate
@@ -417,7 +418,7 @@ proc terminateAllNodes { eid } {
 	pipesClose
 
 	statline "Stopping services for NODEDEST hook..."
-	services stop "NODEDEST"
+	services stop "NODEDEST" "bkg" $l3nodes
 
 	statline "Destroying L3 nodes..."
 	pipesCreate
@@ -487,12 +488,12 @@ proc destroyNodesIfcs { eid nodes nodeCount w } {
     foreach node $nodes {
 	displayBatchProgress $batchStep $nodeCount
 
-	if { [info procs [typemodel $node].destroyIfcs] != "" } {
+	if { [info procs [nodeType $node].destroyIfcs] != "" } {
 	    set ifcs [ifcList $node]
 	    try {
-		[typemodel $node].destroyIfcs $eid $node $ifcs
+		[nodeType $node].destroyIfcs $eid $node $ifcs
 	    } on error err {
-		return -code error "Error in '[typemodel $node].destroyIfcs $eid $node $ifcs': $err"
+		return -code error "Error in '[nodeType $node].destroyIfcs $eid $node $ifcs': $err"
 	    }
 	}
 
@@ -520,7 +521,7 @@ proc destroyNodesIfcs { eid nodes nodeCount w } {
 # SYNOPSIS
 #   stopNodeFromMenu $node
 # FUNCTION
-#   Invokes the [typmodel $node].shutdown procedure, along with services shutdown.
+#   Invokes the [nodeType $node].shutdown procedure, along with services shutdown.
 # INPUTS
 #   * node -- node id
 #****
@@ -550,17 +551,17 @@ proc stopNodeFromMenu { node } {
 	}
     }
 
+    services stop "NODESTOP" "" $node
     pipesCreate
-    services stop "NODESTOP" $node
     try {
 	terminateL2L3Nodes $eid $node 1 $w
     } on error err {
 	finishTerminating 0 "$err" $w
 	return
     }
-    services stop "LINKDEST" $node
-    services stop "NODEDEST"
     pipesClose
+    services stop "LINKDEST" "" $node
+    services stop "NODEDEST" "" $node
 
     finishTerminating 1 "" $w
 }
