@@ -28,6 +28,7 @@
 
 # $Id: rj45.tcl 130 2015-02-24 09:52:19Z valter $
 
+
 #****h* imunes/rj45.tcl
 # NAME
 #  rj45.tcl -- defines rj45 specific procedures
@@ -150,12 +151,12 @@ proc $MODULE.layer {} {
 #   set layer [rj45.virtlayer]
 # FUNCTION
 #   Returns the layer on which the rj45 node is instantiated,
-#   i.e. returns NETGRAPH. 
+#   i.e. returns NATIVE. 
 # RESULT
-#   * layer -- set to NETGRAPH 
+#   * layer -- set to NATIVE 
 #****
 proc $MODULE.virtlayer {} {
-    return NETGRAPH
+    return NATIVE
 }
 
 #****f* rj45.tcl/rj45.instantiate
