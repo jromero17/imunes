@@ -68,7 +68,6 @@ proc packgenPackets { node } {
 proc checkRuleNum { str } {
     return [regexp {^([1-9])([0-9])*$} $str]
 }
-
 proc checkPacketData { str } {
     set str [string map { " " "." ":" "." } $str]
     if { $str != "" } {
