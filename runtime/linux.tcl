@@ -14,7 +14,6 @@ set ULIMIT_PROC "1024:2048"
 #   * eid -- experiment id
 #   * node -- id of the node (type of the node is either lanswitch or hub)
 #****
-
 proc l2node.instantiate { eid node } {
     set type [nodeType $node]
 
@@ -92,6 +91,23 @@ proc execCmdNode { node cmd } {
 
     catch {eval [concat "exec docker exec " $eid.$node $cmd] } output
     return $output
+}
+
+#****f* linux.tcl/execCmdNodeBkg
+# NAME
+#   execCmdNodeBkg -- execute command on virtual node
+# SYNOPSIS
+#   execCmdNodeBkg $node $cmd
+# FUNCTION
+#   Executes a command on a virtual node (in the background).
+# INPUTS
+#   * node -- virtual node id
+#   * cmd -- command to execute
+#****
+proc execCmdNodeBkg { node cmd } {
+    upvar 0 ::cf::[set ::curcfg]::eid eid
+
+    pipesExec "docker exec -d $eid.$node sh -c '$cmd'" "hold"
 }
 
 #****f* linux.tcl/checkForExternalApps
@@ -277,7 +293,7 @@ proc spawnShell { node cmd } {
     set node_id $eid\.$node
 
     # FIXME make this modular
-    exec xterm -sb -rightbar \
+    exec xterm -name imunes-terminal -sb -rightbar \
     -T "IMUNES: [getNodeName $node] (console) [string trim [lindex [split $cmd /] end] ']" \
     -e "docker exec -it $node_id $cmd" 2> /dev/null &
 }
@@ -314,8 +330,9 @@ proc allSnapshotsAvailable {} {
 
     set snapshots $VROOT_MASTER
     foreach node $node_list {
-	set img [getNodeCustomImage $node]
-	if {$img != ""} {
+	# TODO: create another field for other jail/docker arguments
+	set img [lindex [split [getNodeCustomImage $node] " "] end]
+	if { $img != "" } {
 	    lappend snapshots $img
 	}
     }
@@ -473,7 +490,7 @@ proc prepareVirtualFS {} {
 proc attachToL3NodeNamespace { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
 
-    # VIMAGE nodes use docker netns
+    # VIRTUALIZED nodes use docker netns
     set cmds "docker_ns=\$(docker inspect -f '{{.State.Pid}}' $eid.$node)"
     set cmds "$cmds; ip netns del \$docker_ns > /dev/null 2>&1"
     set cmds "$cmds; ip netns attach $eid-$node \$docker_ns"
@@ -545,17 +562,41 @@ proc createNodeContainer { node } {
         set vroot $VROOT_MASTER
     }
 
-    pipesExec "docker run --detach --init --tty \
+    set docker_cmd "docker run --detach --init --tty \
 	--privileged --cap-add=ALL --net=$network \
 	--name $node_id --hostname=[getNodeName $node] \
 	--volume /tmp/.X11-unix:/tmp/.X11-unix \
 	--sysctl net.ipv6.conf.all.disable_ipv6=0 \
 	--ulimit nofile=$ULIMIT_FILE --ulimit nproc=$ULIMIT_PROC \
-	$vroot &" "hold"
+	$vroot &"
+
+    if { $debug } {
+	puts "Node $node -> '$docker_cmd'"
+    }
+
+    pipesExec "$docker_cmd" "hold"
 }
 
 proc isNodeStarted { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
+
+    set node_type [nodeType $node]
+    if { [$node_type.virtlayer] != "VIRTUALIZED" } {
+	if { $node_type in "rj45 ext extnat extelem" } {
+	    return true
+	}
+
+	set nodeNs "$eid-$node"
+
+	try {
+	    exec ip netns exec $nodeNs ip link show $node
+	} on error {} {
+	    return false
+	}
+
+	return true
+    }
+
     set node_id "$eid.$node"
 
     catch {exec docker inspect --format '{{.State.Running}}' $node_id} status
@@ -612,8 +653,22 @@ proc createNodePhysIfcs { node ifcs } {
 	# without bridges between them
 	set peer [peerByIfc $node $ifc]
 	if { $peer != "" } {
-	    set link [linkByPeers $node $peer]
-	    if { $link != "" && [getLinkDirect $link] } {
+	    set this_link ""
+	    foreach link [linkByPeers $node $peer] {
+		set peers [linkPeers $link]
+		set ifaces [linkPeersIfaces $link]
+		if { $node == [lindex $peers 0] && $ifc == [lindex $ifaces 0] } {
+		    set this_link $link
+		    break
+		}
+
+		if { $node == [lindex $peers 1] && $ifc == [lindex $ifaces 1] } {
+		    set this_link $link
+		    break
+		}
+	    }
+
+	    if { $this_link != "" && [getLinkDirect $this_link] } {
 		continue
 	    }
 	}
@@ -771,7 +826,10 @@ proc createNsLinkBridge { netNs link } {
     if { $netNs != "" } {
 	set nsstr "-n $netNs"
     }
-    pipesExec "ip $nsstr link add name $link type bridge ageing_time 0" "hold"
+
+    pipesExec "ip $nsstr link add name $link type bridge ageing_time 0 mcast_snooping 0" "hold"
+    pipesExec "ip $nsstr link set $link multicast off" "hold"
+    pipesExec "ip netns exec $netNs sysctl net.ipv6.conf.$link.disable_ipv6=1" "hold"
     pipesExec "ip $nsstr link set $link up" "hold"
 }
 
@@ -793,6 +851,11 @@ proc createNsVethPair { ifname1 netNs1 ifname2 netNs2 } {
     pipesExec "ip link add name $eid-$ifname1 $nsstr1 type veth peer name $eid-$ifname2 $nsstr2" "hold"
     pipesExec "ip $nsstr1x link set $eid-$ifname1 name $ifname1" "hold"
     pipesExec "ip $nsstr2x link set $eid-$ifname2 name $ifname2" "hold"
+
+    if { $netNs2 == $eid } {
+	pipesExec "ip netns exec $eid ip link set $ifname2 multicast off" "hold"
+	pipesExec "ip netns exec $eid sysctl net.ipv6.conf.$ifname2.disable_ipv6=1" "hold"
+    }
 }
 
 proc setNsIfcMaster { netNs ifname master state } {
@@ -835,7 +898,7 @@ proc createDirectLinkBetween { lnode1 lnode2 ifname1 ifname2 } {
 	    set virtual_ifc $ifname2
 	    set ether [getIfcMACaddr $lnode2 $virtual_ifc]
 
-	    if { [[typemodel $lnode2].virtlayer] == "NETGRAPH" } {
+	    if { [[nodeType $lnode2].virtlayer] == "NATIVE" } {
 		pipesExec "ip link set $physical_ifc netns $nodeNs" "hold"
 		setNsIfcMaster $nodeNs $physical_ifc $lnode2 "up"
 		return
@@ -854,7 +917,7 @@ proc createDirectLinkBetween { lnode1 lnode2 ifname1 ifname2 } {
 	    set virtual_ifc $ifname1
 	    set ether [getIfcMACaddr $lnode1 $virtual_ifc]
 
-	    if { [[typemodel $lnode1].virtlayer] == "NETGRAPH" } {
+	    if { [[nodeType $lnode1].virtlayer] == "NATIVE" } {
 		pipesExec "ip link set $physical_ifc netns $nodeNs" "hold"
 		setNsIfcMaster $nodeNs $physical_ifc $lnode1 "up"
 		return
@@ -894,7 +957,7 @@ proc createDirectLinkBetween { lnode1 lnode2 ifname1 ifname2 } {
 
     # add nodes ifc hooks to link bridge and bring them up
     foreach node [list $lnode1 $lnode2] ifc [list $ifname1 $ifname2] ns [list $node1Ns $node2Ns] {
-	if { [[typemodel $node].virtlayer] != "NETGRAPH" || [nodeType $node] in "ext extnat" } {
+	if { [[nodeType $node].virtlayer] != "NATIVE" || [nodeType $node] in "ext extnat" } {
 	    continue
 	}
 
@@ -997,7 +1060,7 @@ proc isNodeConfigured { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
     set node_id "$eid.$node"
 
-    if { [[typemodel $node].virtlayer] == "NETGRAPH" } {
+    if { [[nodeType $node].virtlayer] == "NATIVE" } {
 	return true
     }
 
@@ -1023,7 +1086,7 @@ proc isNodeError { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
     set node_id "$eid.$node"
 
-    if { [[typemodel $node].virtlayer] == "NETGRAPH" } {
+    if { [[nodeType $node].virtlayer] == "NATIVE" } {
 	return false
     }
 
@@ -1102,8 +1165,8 @@ proc runConfOnNode { node } {
 	}
         set confFile "custom.conf"
     } else {
-        set bootcfg [[typemodel $node].cfggen $node]
-        set bootcmd [[typemodel $node].bootcmd $node]
+        set bootcfg [[nodeType $node].cfggen $node]
+        set bootcmd [[nodeType $node].bootcmd $node]
         set confFile "boot.conf"
     }
 
@@ -1412,17 +1475,8 @@ proc checkSysPrerequisites {} {
 #   qdisc -- queuing discipline
 #****
 proc execSetIfcQDisc { eid node ifc qdisc } {
-    set target [linkByIfc $node $ifc]
-    set peers [linkPeers [lindex $target 0]]
-    set dir [lindex $target 1]
-    set lnode1 [lindex $peers 0]
-    set lnode2 [lindex $peers 1]
-    if { [nodeType $lnode2] == "pseudo" } {
-        set mirror_link [getLinkMirror [lindex $target 0]]
-        set lnode2 [lindex [linkPeers $mirror_link] 0]
-    }
     switch -exact $qdisc {
-        FIFO { set qdisc fifo_fast }
+        FIFO { set qdisc pfifo_fast }
         WFQ { set qdisc sfq }
         DRR { set qdisc drr }
     }
@@ -1504,20 +1558,14 @@ proc configureIfcLinkParams { eid node ifname bandwidth delay ber loss dup } {
 proc execSetLinkParams { eid link } {
     set lnode1 [lindex [linkPeers $link] 0]
     set lnode2 [lindex [linkPeers $link] 1]
-    set ifname1 [ifcByLogicalPeer $lnode1 $lnode2]
-    set ifname2 [ifcByLogicalPeer $lnode2 $lnode1]
+    set ifname1 [lindex [linkPeersIfaces $link] 0]
+    set ifname2 [lindex [linkPeersIfaces $link] 1]
 
-    if { [getLinkMirror $link] != "" } {
-	set mirror_link [getLinkMirror $link]
-	if { [nodeType $lnode1] == "pseudo" } {
-	    set p_lnode1 $lnode1
-	    set lnode1 [lindex [linkPeers $mirror_link] 0]
-	    set ifname1 [ifcByPeer $lnode1 [getNodeMirror $p_lnode1]]
-	} else {
-	    set p_lnode2 $lnode2
-	    set lnode2 [lindex [linkPeers $mirror_link] 0]
-	    set ifname2 [ifcByPeer $lnode2 [getNodeMirror $p_lnode2]]
-	}
+    set mirror_link [getLinkMirror $link]
+    if { $mirror_link != "" } {
+	# pseudo nodes are always peer2
+	set lnode2 [lindex [linkPeers $mirror_link] 0]
+	set ifname2 [lindex [linkPeersIfaces $mirror_link] 0]
     }
 
     set bandwidth [expr [getLinkBandwidth $link] + 0]
@@ -1532,12 +1580,22 @@ proc execSetLinkParams { eid link } {
     pipesClose
 }
 
-proc ipsecFilesToNode { node local_cert ipsecret_file } {
+proc ipsecFilesToNode { node ca_cert local_cert ipsecret_file } {
     global ipsecConf ipsecSecrets
+
+    if { $ca_cert != "" } {
+	set trimmed_ca_cert [lindex [split $ca_cert /] end]
+
+	set fileId [open $ca_cert "r"]
+	set trimmed_ca_cert_data [read $fileId]
+	writeDataToNodeFile $node /etc/ipsec.d/cacerts/$trimmed_ca_cert $trimmed_ca_cert_data
+	close $fileId
+    }
 
     if { $local_cert != "" } {
 	set trimmed_local_cert [lindex [split $local_cert /] end]
-	set fileId [open $trimmed_local_cert "r"]
+
+	set fileId [open $local_cert "r"]
 	set trimmed_local_cert_data [read $fileId]
 	writeDataToNodeFile $node /etc/ipsec.d/certs/$trimmed_local_cert $trimmed_local_cert_data
 	close $fileId
@@ -1545,12 +1603,14 @@ proc ipsecFilesToNode { node local_cert ipsecret_file } {
 
     if { $ipsecret_file != "" } {
 	set trimmed_local_key [lindex [split $ipsecret_file /] end]
-	set fileId [open $trimmed_local_key "r"]
-	set trimmed_local_key_data "# /etc/ipsec.secrets - strongSwan IPsec secrets file\n"
-	set trimmed_local_key_data "$trimmed_local_key_data[read $fileId]\n"
-	set trimmed_local_key_data "$trimmed_local_key_data: RSA $trimmed_local_key"
-	writeDataToNodeFile $node /etc/ipsec.d/private/$trimmed_local_key $trimmed_local_key_data
+
+	set fileId [open $ipsecret_file "r"]
+	set local_key_data [read $fileId]
 	close $fileId
+
+	writeDataToNodeFile $node /etc/ipsec.d/private/$trimmed_local_key $local_key_data
+
+	set ipsecSecrets "${ipsecSecrets}: RSA $trimmed_local_key"
     }
 
     writeDataToNodeFile $node /etc/ipsec.conf $ipsecConf
@@ -1594,7 +1654,7 @@ proc prepareTaygaConf { eid node data datadir } {
 }
 
 proc taygaShutdown { eid node } {
-    catch "exec docker exec $eid.$node killall5 -9 tayga"
+    catch "exec docker exec $eid.$node killall -9 tayga"
     catch "exec docker exec $eid.$node rm -rf /var/db/tayga"
 }
 
@@ -1617,13 +1677,11 @@ proc startExternalConnection { eid node } {
 
     set cmds "$cmds\n ip a flush dev $outifc"
 
-    set ipv4 [getIfcIPv4addr $node $ifc]
-    if { $ipv4 != "" } {
+    foreach ipv4 [getIfcIPv4addrs $node $ifc] {
 	set cmds "$cmds\n ip a add $ipv4 dev $outifc"
     }
 
-    set ipv6 [getIfcIPv6addr $node $ifc]
-    if { $ipv6 != "" } {
+    foreach ipv6 [getIfcIPv6addrs $node $ifc] {
 	set cmds "$cmds\n ip a add $ipv6 dev $outifc"
     }
 
@@ -1638,7 +1696,10 @@ proc stopExternalConnection { eid node } {
 
 proc setupExtNat { eid node ifc } {
     set extIfc [getNodeName $node]
-    set extIp [getIfcIPv4addrs $node $ifc]
+    set extIp [lindex [getIfcIPv4addrs $node $ifc] 0]
+    if { $extIp == "" } {
+	return
+    }
     set prefixLen [lindex [split $extIp "/"] 1]
     set subnet "[ip::prefix $extIp]/$prefixLen"
 
@@ -1651,7 +1712,10 @@ proc setupExtNat { eid node ifc } {
 
 proc unsetupExtNat { eid node ifc } {
     set extIfc [getNodeName $node]
-    set extIp [getIfcIPv4addrs $node $ifc]
+    set extIp [lindex [getIfcIPv4addrs $node $ifc] 0]
+    if { $extIp == "" } {
+	return
+    }
     set prefixLen [lindex [split $extIp "/"] 1]
     set subnet "[ip::prefix $extIp]/$prefixLen"
 
