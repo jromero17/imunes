@@ -25,6 +25,7 @@
 # This work was supported in part by Croatian Ministry of Science
 # and Technology through the research contract #IP-2003-143.
 #
+
 #****h* imunes/packgen.tcl
 # NAME
 #  packgen.tcl -- defines packgen.specific procedures
@@ -110,13 +111,13 @@ proc $MODULE.layer {} {
 #   set layer [packgen.virtlayer]
 # FUNCTION
 #   Returns the layer on which the packgen is instantiated
-#   i.e. returns NETGRAPH. 
+#   i.e. returns NATIVE. 
 # RESULT
-#   * layer -- set to NETGRAPH
+#   * layer -- set to NATIVE
 #****
 
 proc $MODULE.virtlayer {} {
-    return NETGRAPH
+    return NATIVE
 }
 
 #****f* packgen.tcl/packgen.instantiate
