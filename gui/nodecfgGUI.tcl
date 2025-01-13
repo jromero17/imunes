@@ -78,7 +78,6 @@ proc nodeConfigGUI { c node } {
 # INPUTS
 #   * c -- tk canvas
 #****
-
 proc configGUI_createConfigPopupWin { c } {
     global wi debug
     set wi .popup
@@ -255,14 +254,14 @@ proc configGUI_addTree { wi node } {
 	}
     }
 
-    if {[[typemodel $node].virtlayer] == "VIMAGE"} {
+    if {[[nodeType $node].virtlayer] == "VIRTUALIZED"} {
 	$wi.panwin.f1.tree insert {} end -id logIfcFrame -text \
 	    "Logical Interfaces" -open true -tags logIfcFrame
 
 	foreach ifc [lsort -dictionary [logIfcList $node]] {
 	    $wi.panwin.f1.tree insert logIfcFrame end -id $ifc \
 		-text "$ifc" -tags $ifc
-	    foreach column { "OperState" "NatState" "MTU" "IPv4addr" "IPv6addr"} {
+	    foreach column { "OperState" "NatState" "MTU" "IPv4addrs" "IPv6addrs"} {
 		$wi.panwin.f1.tree set $ifc [lindex $column 0] \
 		    [getIfc[lindex $column 0] $node $ifc]
 	    }
@@ -328,7 +327,7 @@ proc configGUI_addTree { wi node } {
 		configGUI_showIfcInfo $wi.panwin.f2 0 $node [$wi.panwin.f1.tree next $ifc]
 	    }"
     }
-    if {[[typemodel $node].virtlayer] == "VIMAGE"} {
+    if {[[nodeType $node].virtlayer] == "VIRTUALIZED"} {
 	$wi.panwin.f1.tree tag bind [lindex [lsort -ascii [ifcList $node]] end] <Key-Down> \
 		"configGUI_showIfcInfo $wi.panwin.f2 0 $node logIfcFrame"
 
@@ -437,14 +436,14 @@ proc configGUI_refreshIfcsTree { wi node } {
 	}
     }
 
-    if {[[typemodel $node].virtlayer] == "VIMAGE"} {
+    if {[[nodeType $node].virtlayer] == "VIRTUALIZED"} {
 	$wi insert {} end -id logIfcFrame -text \
 	    "Logical Interfaces" -open true -tags logIfcFrame
 
 	foreach ifc [lsort -dictionary [logIfcList $node]] {
 	    $wi insert logIfcFrame end -id $ifc \
 		-text "$ifc" -tags $ifc
-	    foreach column { "OperState" "NatState" "MTU" "IPv4addr" "IPv6addr"} {
+	    foreach column { "OperState" "NatState" "MTU" "IPv4addrs" "IPv6addrs"} {
 		$wi set $ifc [lindex $column 0] \
 		    [getIfc[lindex $column 0] $node $ifc]
 	    }
@@ -476,7 +475,7 @@ proc configGUI_refreshIfcsTree { wi node } {
 		configGUI_showIfcInfo $wi_bind.panwin.f2 0 $node [$wi next $ifc]
 	    }"
     }
-    if {[[typemodel $node].virtlayer] == "VIMAGE"} {
+    if {[[nodeType $node].virtlayer] == "VIRTUALIZED"} {
 	$wi tag bind [lindex [lsort -ascii [ifcList $node]] end] <Key-Down> \
 		"configGUI_showIfcInfo $wi_bind.panwin.f2 0 $node logIfcFrame"
 
@@ -978,7 +977,7 @@ proc configGUI_nodeName { wi node label } {
     ttk::frame $wi.name -borderwidth 6
     ttk::label $wi.name.txt -text $label
 
-    if { [typemodel $node] in "rj45 extnat" } {
+    if { [nodeType $node] in "rj45 extnat" } {
 	ttk::combobox $wi.name.nodename -width 14 -textvariable extIfc$node
 	set ifcs [getExtIfcs]
 	$wi.name.nodename configure -values [concat UNASSIGNED $ifcs]
@@ -1018,7 +1017,7 @@ proc configGUI_rj45s { wi node } {
     foreach group [getNodeExternalIfcs $node] {
 	lassign $group ifc extIfc
 	set lbl "Interface $ifc"
-	set peer [logicalPeerByIfc $node $ifc]
+	lassign [logicalPeerByIfc $node $ifc] peer -
 	if { $peer != "" } {
 	    set lbl "$lbl (peer [getNodeName $peer])"
 	}
@@ -1252,65 +1251,6 @@ proc configGUI_ifcIPv6Address { wi node ifc } {
     $wi.if$ifc.ipv6.addr configure -validatecommand {checkIPv6Nets %P}
     pack $wi.if$ifc.ipv6.txt $wi.if$ifc.ipv6.addr -side left
     pack $wi.if$ifc.ipv6 -anchor w -padx 10
-}
-
-#****f* nodecfgGUI.tcl/configGUI_ifcDirection
-# NAME
-#   configGUI_ifcDirection -- configure GUI - interface direction
-# SYNOPSIS
-#   configGUI_ifcDirection $wi $node $ifc
-# FUNCTION
-#   Creating module for changing direction of the interface (internal or
-#   external).
-# INPUTS
-#   * wi -- widget
-#   * node -- node id
-#   * ifc -- interface id
-#****
-proc configGUI_ifcDirection { wi node ifc } {
-    global guielements externalifc
-    lappend guielements "configGUI_ifcDirection $ifc"
-    set external 0
-    set externalifc ""
-    ttk::frame $wi.if$ifc.direct -borderwidth 2
-    ttk::label $wi.if$ifc.direct.txt -text "Direction " -anchor w
-    global ifdirect$ifc
-    set ifdirect$ifc [getIfcDirect $node $ifc]
-    foreach interface [ifcList $node] {
- 	if { [string equal [getIfcDirect $node $interface] "external"] } {
- 	    set external 1
-            set externalifc $interface
- 	}
-     }
-    ttk::radiobutton $wi.if$ifc.direct.int -text "internal" \
-	-variable ifdirect$ifc -value internal -padding 2
-    ttk::radiobutton $wi.if$ifc.direct.ext -text "external" \
-	    -variable ifdirect$ifc -value external -padding 2
-    pack $wi.if$ifc.direct.txt -side left
-    pack $wi.if$ifc.direct.int $wi.if$ifc.direct.ext -side left -anchor w
-    pack $wi.if$ifc.direct -anchor w -padx 10
-}
-
-#****f* nodecfgGUI.tcl/configGUI_ipfirewallRuleset
-# NAME
-#   configGUI_ipfirewallRuleset -- configure GUI - ipfirewall ruleset
-# SYNOPSIS
-#   configGUI_ipfirewallRuleset $wi $node
-# FUNCTION
-#   Creating module for adding rules for packet filtering (ipfw rules).
-# INPUTS
-#   * wi -- widget
-#   * node -- node id
-#****
-proc configGUI_ipfirewallRuleset { wi node } {
-    global guielements
-    lappend guielements configGUI_ipfirewallRuleset
-    ttk::frame $wi.rules -borderwidth 2 -relief groove -padding 4
-    ttk::label $wi.rules.label -text "Add rules:"
-    text $wi.rules.text -bg white -width 42 -height 4 -takefocus 0
-    pack $wi.rules.label -anchor w -pady 2
-    pack $wi.rules.text -fill both -expand 1 -padx 4 -expand 1
-    pack $wi.rules -anchor w -fill both -expand 1
 }
 
 #****f* nodecfgGUI.tcl/configGUI_staticRoutes
@@ -1548,7 +1488,7 @@ proc configGUI_stp { wi node } {
 #****
 proc configGUI_routingModel { wi node } {
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
-    global ripEnable ripngEnable ospfEnable ospf6Enable supp_router_models
+    global ripEnable ripngEnable ospfEnable ospf6Enable bgpEnable supp_router_models
     global router_ConfigModel guielements
     lappend guielements configGUI_routingModel
     ttk::frame $wi.routing -relief groove -borderwidth 2 -padding 2
@@ -1562,24 +1502,28 @@ proc configGUI_routingModel { wi node } {
     ttk::checkbutton $w.protocols.ripng -text "ripng" -variable ripngEnable
     ttk::checkbutton $w.protocols.ospf -text "ospfv2" -variable ospfEnable
     ttk::checkbutton $w.protocols.ospf6 -text "ospfv3" -variable ospf6Enable
+    ttk::checkbutton $w.protocols.bgp -text "bgp" -variable bgpEnable -state disabled
     ttk::radiobutton $w.model.frr -text frr \
 	-variable router_ConfigModel -value frr -command \
 	"$w.protocols.rip configure -state normal;
 	 $w.protocols.ripng configure -state normal;
 	 $w.protocols.ospf configure -state normal;
-	 $w.protocols.ospf6 configure -state normal"
+	 $w.protocols.ospf6 configure -state normal;
+	 $w.protocols.bgp configure -state disabled"
     ttk::radiobutton $w.model.quagga -text quagga \
 	-variable router_ConfigModel -value quagga -command \
 	"$w.protocols.rip configure -state normal;
 	 $w.protocols.ripng configure -state normal;
 	 $w.protocols.ospf configure -state normal;
-	 $w.protocols.ospf6 configure -state normal"
+	 $w.protocols.ospf6 configure -state normal;
+	 $w.protocols.bgp configure -state disabled"
     ttk::radiobutton $w.model.static -text static \
 	-variable router_ConfigModel -value static -command \
 	"$w.protocols.rip configure -state disabled;
 	 $w.protocols.ripng configure -state disabled;
 	 $w.protocols.ospf configure -state disabled;
-	 $w.protocols.ospf6 configure -state disabled"
+	 $w.protocols.ospf6 configure -state disabled;
+	 $w.protocols.bgp configure -state disabled"
 
     set router_ConfigModel [getNodeModel $node]
     if { $router_ConfigModel != "static" } {
@@ -1587,11 +1531,13 @@ proc configGUI_routingModel { wi node } {
 	set ripngEnable [getNodeProtocolRipng $node]
 	set ospfEnable [getNodeProtocolOspfv2 $node]
 	set ospf6Enable [getNodeProtocolOspfv3 $node]
+	set bgpEnable [getNodeProtocolBgp $node]
     } else {
         $w.protocols.rip configure -state disabled
 	$w.protocols.ripng configure -state disabled
  	$w.protocols.ospf configure -state disabled
  	$w.protocols.ospf6 configure -state disabled
+ 	$w.protocols.bgp configure -state disabled
     }
     if { $oper_mode != "edit" } {
 	$w.model.frr configure -state disabled
@@ -1601,6 +1547,7 @@ proc configGUI_routingModel { wi node } {
 	$w.protocols.ripng configure -state disabled
 	$w.protocols.ospf configure -state disabled
 	$w.protocols.ospf6 configure -state disabled
+	$w.protocols.bgp configure -state disabled
     }
     if {"frr" ni $supp_router_models} {
 	$w.model.frr configure -state disabled
@@ -1611,7 +1558,8 @@ proc configGUI_routingModel { wi node } {
     pack $w.model -fill both -expand 1
     pack $w.protocols.label -side left -padx 2
     pack $w.protocols.rip $w.protocols.ripng \
-	$w.protocols.ospf $w.protocols.ospf6 -side left -padx 6
+	$w.protocols.ospf $w.protocols.ospf6 \
+	$w.protocols.bgp -side left -padx 6
     pack $w.protocols -fill both -expand 1
     pack $w -fill both
 }
@@ -1788,35 +1736,6 @@ proc configGUI_cpuConfig { wi node } {
     pack $wi.cpucfg -anchor w -fill both
 }
 
-#****f* nodecfgGUI.tcl/configGUI_cloudConfig
-# NAME
-#   configGUI_cloudConfig -- configure GUI - cloud configuration
-# SYNOPSIS
-#   configGUI_cloudConfig $wi $node
-# FUNCTION
-#   Creating module for cloud configuration.
-# INPUTS
-#   * wi -- widget
-#   * node -- node id
-#****
-proc configGUI_cloudConfig { wi node } {
-    global guielements
-    lappend guielements configGUI_cloudConfig
-    ttk::frame $wi.cloudpart -borderwidth 2 -relief groove -padding 6
-    ttk::frame $wi.cloudpart.label
-    ttk::label $wi.cloudpart.label.txt -text "Number of hosts:"
-    ttk::spinbox $wi.cloudpart.label.num -width 10 -validate focus \
-        -invalidcommand "focusAndFlash %W"
-    $wi.cloudpart.label.num insert 0 1;
-    $wi.cloudpart.label.num configure \
-        -validatecommand {checkIntRange %P 1 1000000} \
-        -from 1 -to 1000000 -increment 1
-    pack $wi.cloudpart.label.txt -side left -anchor w -padx 4
-    pack $wi.cloudpart.label.num
-    pack $wi.cloudpart.label -expand 1 -fill both
-    pack $wi.cloudpart -expand 1 -fill both
-}
-
 #****f* nodecfgGUI.tcl/configGUI_ifcVlanConfig
 # NAME
 #   configGUI_ifcVlanConfig -- configure GUI - interface vlan configuration
@@ -1886,10 +1805,10 @@ proc configGUI_externalIfcs { wi node } {
     $wi.if$ifc.mac.addr insert 0 [getIfcMACaddr $node $ifc]
     ttk::label $wi.if$ifc.labelIPv4 -text "IPv4 address:" -width 11
     ttk::entry $wi.if$ifc.ipv4.addr -width 24 -validate focus
-    $wi.if$ifc.ipv4.addr insert 0 [getIfcIPv4addr $node $ifc]
+    $wi.if$ifc.ipv4.addr insert 0 [join [getIfcIPv4addrs $node $ifc] ";"]
     ttk::label $wi.if$ifc.labelIPv6 -text "IPv6 address:" -width 11
     ttk::entry $wi.if$ifc.ipv6.addr -width 24 -validate focus
-    $wi.if$ifc.ipv6.addr insert 0 [getIfcIPv6addr $node $ifc]
+    $wi.if$ifc.ipv6.addr insert 0 [join [getIfcIPv6addrs $node $ifc] ";"]
 
     pack $wi.if$ifc -expand 1 -padx 1 -pady 1
     grid $wi.if$ifc.labelName -in $wi.if$ifc -columnspan 2 -row 0 -pady 4 -padx 4
@@ -2150,71 +2069,6 @@ proc configGUI_ifcIPv6AddressApply { wi node ifc } {
     }
 }
 
-#****f* nodecfgGUI.tcl/configGUI_ifcDirectionApply
-# NAME
-#   configGUI_ifcDirectionApply -- configure GUI - interface direction apply
-# SYNOPSIS
-#   configGUI_ifcDirectionApply $wi $node $ifc
-# FUNCTION
-#   Saves changes in the module with direction of the interface .
-# INPUTS
-#   * wi -- widget
-#   * node -- node id
-#   * ifc -- interface name
-#****
-proc configGUI_ifcDirectionApply { wi node ifc } {
-    global changed apply externalifc
-    global [subst ifdirect$ifc]
-    set ifdirectstate [subst $[subst ifdirect$ifc]]
-    set oldifdirectstate [getIfcDirect $node $ifc]
-    if { $ifdirectstate != $oldifdirectstate } {
-	if { $ifdirectstate == "external" } {
-	    setIfcDirect $node $externalifc "internal"
-	}
-	set externalifc $ifc
-	if {$apply == 1} {
-	    setIfcDirect $node $ifc $ifdirectstate
-	}
-	set changed 1
-    }
-}
-
-#****f* nodecfgGUI.tcl/configGUI_ipfirewallRulesetApply
-# NAME
-#   configGUI_ipfirewallRulesetApply -- configure GUI - ipfirewall rulset apply
-# SYNOPSIS
-#   configGUI_ipfirewallRulesetApply $wi $node
-# FUNCTION
-#   Saves changes in the module with ipfw rules.
-# INPUTS
-#   * wi -- widget
-#   * node -- node id
-#****
-proc configGUI_ipfirewallRulesetApply { wi node } {
-    global changed
-    set i 1
-    set error 0
-
-    while { 1 } {
-      set text [$wi.rules.text get $i.0 $i.end]
-      if { $text == "" } {
-	  break
-      }
-      set rule [string range $text 0 end]
-      catch { eval exec "ipfw -n $rule" } msg
-      if { [string range $msg 0 4] == "ipfw:" } {
-	  set error 1
-	  set warning "The rule syntax is wrong."
-	  tk_messageBox -message $warning -type ok -icon warning \
-	      -title "Rule syntax error"
-      }
-      if { $error == 1 } {
-	  break
-      }
-      incr i
-    }
-}
-
 #****f* nodecfgGUI.tcl/configGUI_staticRoutesApply
 # NAME
 #   configGUI_staticRoutesApply -- configure GUI - static routes apply
@@ -2462,7 +2316,7 @@ proc configGUI_stpApply { wi node } {
 proc configGUI_routingModelApply { wi node } {
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
     global router_ConfigModel
-    global ripEnable ripngEnable ospfEnable ospf6Enable
+    global ripEnable ripngEnable ospfEnable ospf6Enable bgpEnable
     if { $oper_mode == "edit"} {
 	if { [nodeType $node] != "nat64" } {
 	    setNodeModel $node $router_ConfigModel
@@ -2472,6 +2326,7 @@ proc configGUI_routingModelApply { wi node } {
 	    setNodeProtocolRipng $node $ripngEnable
 	    setNodeProtocolOspfv2 $node $ospfEnable
 	    setNodeProtocolOspfv3 $node $ospf6Enable
+	    setNodeProtocolBgp $node $bgpEnable
 	    if { [nodeType $node] == "nat64" } {
 		foreach proto { rip ripng ospf ospf6 bgp } {
 		    set protocfg [netconfFetchSection $node "router $proto"]
@@ -2489,6 +2344,7 @@ proc configGUI_routingModelApply { wi node } {
 	    $wi.routing.protocols.ripng configure -state disabled
 	    $wi.routing.protocols.ospf configure -state disabled
             $wi.routing.protocols.ospf6 configure -state disabled
+            $wi.routing.protocols.bgp configure -state disabled
 	}
     set changed 1
     }
@@ -2598,23 +2454,6 @@ proc configGUI_cpuConfigApply { wi node } {
 	setNodeCPUConf $node [list $newcpuconf]
 	set changed 1
     }
-}
-
-#****f* nodecfgGUI.tcl/configGUI_cloudConfigApply
-# NAME
-#   configGUI_cloudConfigApply -- configure GUI - cloud configuration apply
-# SYNOPSIS
-#   configGUI_cloudConfigApply $wi $node
-# FUNCTION
-#   Saves changes in the module with cloud configuration parameters.
-# INPUTS
-#   * wi -- widget
-#   * node -- node id
-#****
-proc configGUI_cloudConfigApply { wi node } {
-    set cloud_parts [$wi.cloudpart.label.num get]
-    puts $cloud_parts
-    setCloudParts $node $cloud_parts
 }
 
 #****f* nodecfgGUI.tcl/configGUI_ifcVlanConfigApply
@@ -2861,8 +2700,8 @@ proc createTab { node cfgID } {
 #****
 proc customConfigGUIFillDefaults { wi node } {
     set cfgID [$wi.nb tab current -text]
-    set cmd [[typemodel $node].bootcmd $node]
-    set cfg [[typemodel $node].cfggen $node]
+    set cmd [[nodeType $node].bootcmd $node]
+    set cfg [[nodeType $node].cfggen $node]
     set w $wi.nb.$cfgID
 
     if { [$w.bootcmd_e get] != "" || [$w.editor get 1.0 {end -1c}] != "" } {
@@ -3141,7 +2980,7 @@ proc deleteIPsecConnection { node tab } {
 proc putIPsecConnectionInTree { node tab indicator } {
     global version instance_duration keying_duration negotiation_attempts
     global how_long_before ike_encr ike_auth ike_modp peers_ip peers_name peers_id start_connection
-    global peers_subnet local_cert_file type method esp_suits authby psk_key
+    global peers_subnet ca_cert_file local_cert_file type method esp_suits authby psk_key
     global ah_suits modp_suits connection_name local_name local_ip_address local_subnet
     global tree_widget conn_time keying_time how_long_time
     global no_encryption secret_file old_conn_name ipsec_enable
@@ -3300,6 +3139,15 @@ proc putIPsecConnectionInTree { node tab indicator } {
 
     set total_list ""
 
+    if { $indicator == "modify" } {
+	delNodeIPsecElement $node "configuration" "conn $old_conn_name"
+    }
+    if { [getNodeIPsec $node] == "" } {
+	createEmptyIPsecCfg $node
+    }
+
+    setNodeIPsecItem $node "ca_cert" $ca_cert_file
+
     set has_local_cert [getNodeIPsecItem $node "local_cert"]
     set has_local_key_file [getNodeIPsecItem $node "local_key_file"]
 
@@ -3322,12 +3170,6 @@ proc putIPsecConnectionInTree { node tab indicator } {
         }
     }
 
-    if { $indicator == "modify" } {
-	delNodeIPsecElement $node "configuration" "conn $old_conn_name"
-    }
-    if { [getNodeIPsec $node] == "" } {
-	createEmptyIPsecCfg $node
-    }
     setNodeIPsecElement $node "configuration" "conn $connection_name" ""
     if { $total_keying_duration != "3h" } {
         setNodeIPsecSetting $node "configuration" "conn $connection_name" "ikelifetime" "$total_keying_duration"
@@ -3372,6 +3214,8 @@ proc putIPsecConnectionInTree { node tab indicator } {
     setNodeIPsecSetting $node "configuration" "conn $connection_name" "peersname" "[lindex $peers_name 0]"
 
     if { $authby == "secret" } {
+        setNodeIPsecSetting $node "configuration" "conn $connection_name" "leftcert" ""
+
         setNodeIPsecSetting $node "configuration" "conn $connection_name" "authby" "secret"
         setNodeIPsecSetting $node "configuration" "conn $connection_name" "sharedkey" "$psk_key"
 
@@ -3379,6 +3223,8 @@ proc putIPsecConnectionInTree { node tab indicator } {
         setNodeIPsecSetting $node "configuration" "conn $connection_name" "rightid" ""
 #        checkAndClearCertificatesAndIds $node $connection_name
     } else {
+        setNodeIPsecSetting $node "configuration" "conn $connection_name" "leftcert" "[file tail $local_cert_file]"
+
         setNodeIPsecSetting $node "configuration" "conn $connection_name" "leftid" "$local_name"
         setNodeIPsecSetting $node "configuration" "conn $connection_name" "rightid" "$peers_id"
 
@@ -3502,6 +3348,18 @@ proc createIPsecGUI { node mainFrame connParamsLframe espOptionsLframe ikeSALfra
     grid $connParamsLframe.peer_sub_entry -column 1 -row 6 -pady 5 -padx 5 -sticky w
     grid $connParamsLframe.peer_sub_entry_text -column 1 -row 6 -pady 5 -padx 5 -sticky w
     grid remove $connParamsLframe.peer_sub_entry_text
+
+    ttk::frame $connParamsLframe.ca_cert_container
+    ttk::label $connParamsLframe.ca_cert_container.ca_cert -text "CA certificate file:"
+    ttk::entry $connParamsLframe.ca_cert_container.ca_cert_entry -width 14 -textvariable ca_cert_file
+    ttk::button $connParamsLframe.ca_cert_container.cert_chooser -text "Open" \
+	-command "chooseFile cacert"
+    ttk::entry $connParamsLframe.ca_cert_container.ca_cert_directory -width 20 -textvariable ca_cert_dir -state readonly
+    grid $connParamsLframe.ca_cert_container -column 0 -row 7 -columnspan 3 -sticky w
+    grid $connParamsLframe.ca_cert_container.ca_cert -column 0 -row 0 -pady 5 -padx {11 5} -sticky e
+    grid $connParamsLframe.ca_cert_container.ca_cert_entry -column 1 -row 0 -pady 5 -padx 5 -sticky w
+    grid $connParamsLframe.ca_cert_container.cert_chooser -column 2 -row 0
+    grid $connParamsLframe.ca_cert_container.ca_cert_directory -column 3 -row 0 -pady 5 -padx 5 -sticky w
 
     ttk::frame $connParamsLframe.local_cert_container
     ttk::label $connParamsLframe.local_cert_container.local_cert -text "Local certificate file:"
@@ -3695,8 +3553,7 @@ proc updateLocalSubnetCombobox { connParamsLframe } {
 
     set IPs [$connParamsLframe.local_ip_entry cget -values]
 
-    set idx [lsearch -exact $IPs $local_ip_address ]
-    set IPs [lreplace $IPs $idx $idx]
+    set IPs [removeFromList $IPs $local_ip_address "keep_doubles"]
     set subnets [getSubnetsFromIPs $IPs]
 
     if { $subnets != "" } {
@@ -3717,9 +3574,9 @@ proc updatePeerSubnetCombobox { connParamsLframe } {
     set subnetVersion [::ip::version $local_subnet]
 
     set peerIPs ""
-    set allPeerIPs [getAllIpAddresses $peers_node]
-    foreach ip $allPeerIPs {
-	if { $subnetVersion == [::ip::version $ip] && $peers_ip != $ip} {
+    lassign [getAllIpAddresses $peers_node] ipv4_list ipv6_list
+    foreach ip [concat $ipv4_list $ipv6_list] {
+	if { $subnetVersion == [::ip::version $ip] && $peers_ip != $ip } {
 	    lappend peerIPs $ip
 	}
     }
@@ -3740,9 +3597,9 @@ proc updatePeerSubnetCombobox { connParamsLframe } {
 #****
 proc setDefaultsForIPsec { node connParamsLframe espOptionsLframe } {
     global version connection_name instance_duration keying_duration negotiation_attempts
-    global conn_time keying_time how_long_time local_cert_dir secret_dir authby psk_key
+    global conn_time keying_time how_long_time ca_cert_dir local_cert_dir secret_dir authby psk_key
     global how_long_before ike_encr ike_auth ike_modp peers_ip peers_name peers_id start_connection
-    global peers_subnet local_cert_file local_name local_ip_address local_subnet type method esp_suits
+    global peers_subnet ca_cert_file local_cert_file local_name local_ip_address local_subnet type method esp_suits
     global ah_suits modp_suits secret_file no_encryption
 
     set connection_name "home"
@@ -3763,17 +3620,20 @@ proc setDefaultsForIPsec { node connParamsLframe espOptionsLframe } {
     set peers_id ""
     set psk_key ""
     set no_encryption "null"
+    set ca_cert_dir "/usr/local/etc/ipsec.d/cacerts"
     set local_cert_dir "/usr/local/etc/ipsec.d/certs"
     set secret_dir "/usr/local/etc/ipsec.d/private"
     $espOptionsLframe.esp_container.null_encryption configure -state readonly
 
-    set local_cert_file [getNodeIPsecItem $node "local_cert_file"]
+    set ca_cert_file [getNodeIPsecItem $node "ca_cert"]
+    set local_cert_file [getNodeIPsecItem $node "local_cert"]
     set local_name [getNodeName $node]
 
     set nodes [concat %any [getListOfOtherNodes $node]]
     $connParamsLframe.peer_name_entry configure -values $nodes
 
-    set localIPs [getAllIpAddresses $node]
+    lassign [getAllIpAddresses $node] ipv4_list ipv6_list
+    set localIPs [concat $ipv4_list $ipv6_list]
     $connParamsLframe.local_ip_entry configure -values $localIPs
     set local_ip_address [lindex $localIPs 0]
 
@@ -3838,17 +3698,18 @@ proc setDefaultsForIPsec { node connParamsLframe espOptionsLframe } {
 #****
 proc populateValuesForUpdate { node tab connParamsLframe espOptionsLframe } {
     global version connection_name instance_duration keying_duration negotiation_attempts
-    global conn_time keying_time how_long_time authby psk_key local_cert_dir secret_dir
+    global conn_time keying_time how_long_time authby psk_key ca_cert_dir local_cert_dir secret_dir
     global how_long_before ike_encr ike_auth ike_modp peers_ip peers_name peers_id start_connection
-    global peers_subnet local_cert_file local_name local_ip_address local_subnet type method esp_suits
+    global peers_subnet ca_cert_file local_cert_file local_name local_ip_address local_subnet type method esp_suits
     global ah_suits modp_suits secret_file no_encryption old_conn_name
 
     set selected [$tab.tree focus]
     set connection_name $selected
     set version "ikev2"
 
-    set local_cert_file [getNodeIPsecSetting $node "configuration" "conn $selected" "local_cert"]
-    set secret_file [getNodeIPsecSetting $node "configuration" "conn $selected" "local_key_file"]
+    set ca_cert_file [getNodeIPsecItem $node "ca_cert"]
+    set local_cert_file [getNodeIPsecItem $node "local_cert"]
+    set secret_file [getNodeIPsecItem $node "local_key_file"]
 
     set var_list { \
 	{type "type" "tunnel" } \
@@ -3922,6 +3783,7 @@ proc populateValuesForUpdate { node tab connParamsLframe espOptionsLframe } {
     if { $authby == "secret" } {
 	hideCertificates $connParamsLframe
     } else {
+	set authby "cert"
 	showCertificates $connParamsLframe
     }
 
@@ -3929,7 +3791,8 @@ proc populateValuesForUpdate { node tab connParamsLframe espOptionsLframe } {
     $connParamsLframe.peer_name_entry configure -values [concat %any $nodes]
 
     set local_ip_address [getNodeIPsecSetting $node "configuration" "conn $selected" "left"]
-    set localIPs [getAllIpAddresses $node]
+    lassign [getAllIpAddresses $node] ipv4_list ipv6_list
+    set localIPs [concat $ipv4_list $ipv6_list]
     $connParamsLframe.local_ip_entry configure -values $localIPs
     foreach localIp $localIPs {
 	if { $local_ip_address == [lindex [split $localIp /] 0]} {
@@ -3966,6 +3829,7 @@ proc populateValuesForUpdate { node tab connParamsLframe espOptionsLframe } {
     set local_subnet [getNodeIPsecSetting $node "configuration" "conn $selected" "leftsubnet"]
     set peers_subnet [getNodeIPsecSetting $node "configuration" "conn $selected" "rightsubnet"]
 
+    set ca_cert_dir "/usr/local/etc/ipsec.d/cacerts"
     set local_cert_dir "/usr/local/etc/ipsec.d/certs"
     set secret_dir "/usr/local/etc/ipsec.d/private"
 
@@ -4045,11 +3909,13 @@ proc showCertificates { lFrame } {
 	grid remove $lFrame.peer_sub_entry_text
     }
 
-    grid $lFrame.local_cert_container -column 0 -row 7 -columnspan 3 -sticky w
+    grid $lFrame.ca_cert_container -column 0 -row 7 -columnspan 3 -sticky w
 
-    grid $lFrame.private_file_container -column 0 -row 8 -columnspan 3 -sticky w
+    grid $lFrame.local_cert_container -column 0 -row 8 -columnspan 3 -sticky w
 
-    grid $lFrame.check_button -column 0 -row 9 -pady 5 -padx 5 -columnspan 2
+    grid $lFrame.private_file_container -column 0 -row 9 -columnspan 3 -sticky w
+
+    grid $lFrame.check_button -column 0 -row 10 -pady 5 -padx 5 -columnspan 2
 }
 
 #****f* nodecfgGUI.tcl/hideCertificates
@@ -4063,7 +3929,7 @@ proc showCertificates { lFrame } {
 #****
 proc hideCertificates { lFrame } {
     global peers_name
-    set var_list { local_id local_id_entry peer_name peer_id local_cert_container private_file_container }
+    set var_list { local_id local_id_entry peer_name peer_id ca_cert_container local_cert_container private_file_container }
 
     foreach var $var_list {
 	grid forget $lFrame.$var
@@ -4108,9 +3974,11 @@ proc hideCertificates { lFrame } {
 #   mode - indicates wheter to open local certificate or local key file
 #****
 proc chooseFile { mode } {
-    global local_cert_file secret_file
+    global ca_cert_file local_cert_file secret_file
     if { $mode == "cert" } {
 	set local_cert_file [tk_getOpenFile]
+    } elseif { $mode == "cacert" } {
+	set ca_cert_file [tk_getOpenFile]
     } else {
 	set secret_file [tk_getOpenFile]
     }
@@ -5641,8 +5509,7 @@ proc configGUI_ifcRuleConfigApply { add dup } {
     }
     if { $ruleNumChanged == 1 } {
 	set l [ifcFilterRuleList $curnode $ifc]
-	set i [lsearch $l $old_rulnum]
-	set l [lreplace $l $i $i]
+	set l [removeFromList $l $old_rulnum]
 	if { $rulnum in $l} {
 	    tk_dialog .dialog1 "IMUNES warning" \
 		"Rule number already exists." \
@@ -5661,8 +5528,7 @@ proc configGUI_ifcRuleConfigApply { add dup } {
     switch -regexp $action {
 	(no)?match_hook {
 	    set vals [lsort [ifcList $curnode]]
-	    set c [lsearch $vals $ifc]
-	    set vals [lreplace $vals $c $c]
+	    set vals [removeFromList $vals $ifc]
 	    if { $adata ni $vals } {
 		tk_dialog .dialog1 "IMUNES warning" \
 		    "ActData: Select one of the existing hooks, but not the current one ($ifc)." \
@@ -5672,8 +5538,7 @@ proc configGUI_ifcRuleConfigApply { add dup } {
 	}
 	(no)?match_dupto {
 	    set vals [lsort [ifcList $curnode]]
-	    set c [lsearch $vals $ifc]
-	    set vals [lreplace $vals $c $c]
+	    set vals [removeFromList $vals $ifc]
 	    if { $adata ni $vals } {
 		tk_dialog .dialog1 "IMUNES warning" \
 		    "ActData: Select one of the existing hooks, but not the current one ($ifc)." \
@@ -5808,16 +5673,14 @@ proc refreshIfcActionDataValues { node refresh } {
     switch -regexp [set ifcFilterAction$ifc$rule] {
 	(no)?match_hook {
 	    set vals [lsort [ifcList $node]]
-	    set c [lsearch $vals $ifc]
-	    set vals [lreplace $vals $c $c]
+	    set vals [removeFromList $vals $ifc]
 	    if { [set ifcFilterActionData$ifc$rule] == "" || $refresh == 1 } {
 		set ifcFilterActionData$ifc$rule [lindex $vals 0]
 	    }
 	}
 	(no)?match_dupto {
 	    set vals [lsort [ifcList $node]]
-	    set c [lsearch $vals $ifc]
-	    set vals [lreplace $vals $c $c]
+	    set vals [removeFromList $vals $ifc]
 	    if { [set ifcFilterActionData$ifc$rule] == "" || $refresh == 1 } {
 		set ifcFilterActionData$ifc$rule [lindex $vals 0]
 	    }
@@ -6381,8 +6244,7 @@ if {0} {
     }
     if { $pacNumChanged == 1 } {
 	set l [packgenPackets $curnode]
-	set i [lsearch $l $old_pacnum]
-	set l [lreplace $l $i $i]
+	set l [removeFromList $l $old_pacnum]
 	if { $pacnum in $l} {
 	    tk_dialog .dialog1 "IMUNES warning" \
 		"Packet ID already exists." \
@@ -6433,7 +6295,7 @@ proc configGUI_packetConfigDelete { } {
 ## custom GUI procedures
 proc configGUI_routingProtocols { wi node } {
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
-    global ripEnable ripngEnable ospfEnable ospf6Enable
+    global ripEnable ripngEnable ospfEnable ospf6Enable bgpEnable
     global guielements
     lappend guielements configGUI_routingModel
     ttk::frame $wi.routing -relief groove -borderwidth 2 -padding 2
@@ -6444,20 +6306,24 @@ proc configGUI_routingProtocols { wi node } {
     ttk::checkbutton $wi.routing.protocols.ripng -text "ripng" -variable ripngEnable
     ttk::checkbutton $wi.routing.protocols.ospf -text "ospfv2" -variable ospfEnable
     ttk::checkbutton $wi.routing.protocols.ospf6 -text "ospfv3" -variable ospf6Enable
+    ttk::checkbutton $wi.routing.protocols.bgp -text "bgp" -variable bgpEnable
 
     set ripEnable [getNodeProtocolRip $node]
     set ripngEnable [getNodeProtocolRipng $node]
     set ospfEnable [getNodeProtocolOspfv2 $node]
     set ospf6Enable [getNodeProtocolOspfv3 $node]
+    set bgpEnable [getNodeProtocolBgp $node]
     if { $oper_mode != "edit" } {
 	$wi.routing.protocols.rip configure -state disabled
 	$wi.routing.protocols.ripng configure -state disabled
 	$wi.routing.protocols.ospf configure -state disabled
 	$wi.routing.protocols.ospf6 configure -state disabled
+	$wi.routing.protocols.bgp configure -state disabled
     }
     pack $wi.routing.protocols.label -side left -padx 2
     pack $wi.routing.protocols.rip $wi.routing.protocols.ripng \
-	$wi.routing.protocols.ospf $wi.routing.protocols.ospf6 -side left -padx 6
+	$wi.routing.protocols.ospf $wi.routing.protocols.ospf6 \
+	$wi.routing.protocols.bgp -side left -padx 6
     pack $wi.routing.protocols -fill both -expand 1
     pack $wi.routing -fill both
 }
