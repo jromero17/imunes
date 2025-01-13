@@ -22,6 +22,7 @@
 # OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 # SUCH DAMAGE.
 #
+
 set MODULE wlan
 
 registerModule $MODULE
@@ -70,7 +71,7 @@ proc $MODULE.layer {} {
 }
 
 proc $MODULE.virtlayer {} {
-    return NETGRAPH
+    return NATIVE
 }
 
 proc $MODULE.instantiate { eid node } {
@@ -89,12 +90,12 @@ proc $MODULE.start { eid node } {
     set ngid $ngnodemap($eid\.$node)
     set wlan_epids ""
     foreach ifc [ifcList $node] {
-	lappend wlan_epids [string range [logicalPeerByIfc $node $ifc] 1 end]
+	lappend wlan_epids [string range [lindex [logicalPeerByIfc $node $ifc] 0] 1 end]
     }
 
     foreach ifc [ifcList $node] {
 	set local_linkname link[string range $ifc 1 end]
-	set local_epid [string range [logicalPeerByIfc $node $ifc] 1 end]
+	set local_epid [string range [lindex [logicalPeerByIfc $node $ifc] 0] 1 end]
 	set tx_bandwidth 54000000
 	set tx_jitter 1.5
 	set tx_duplicate 5
@@ -136,8 +137,8 @@ proc $MODULE.configGUI { c node } {
     set guielements {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "WLAN configuration"
-    configGUI_nodeName $wi $node "Node name:"
+    wm title $wi [mc "WLAN configuration"]
+    configGUI_nodeName $wi $node [mc "Node name:"]
 
     configGUI_buttonsACNode $wi $node
 }
