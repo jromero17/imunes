@@ -21,19 +21,19 @@ proc showCfg { c node } {
     	return
     }
     #Dont draw again if cursor did not move
-    if {[winfo pointerxy .] == $lastObservedNode} {
+    if { [winfo pointerxy .] == $lastObservedNode } {
 	    return
     }
     set lastObservedNode [winfo pointerxy .]
     #Dont show popup window if 'None' or 'Route' is selected from 
     #the 'Show' menu
     #Also, dont show popup window if there is no node
-    if {$showCfg == "None" || $showCfg == "route" || $node == "" } {
+    if { $showCfg == "None" || $showCfg == "route" || $node == "" } {
     	$c delete -withtag showCfgPopup
 	return
     }
-    #Dont show popup window if the node virtlayer is different from VIMAGE
-    if {[[typemodel $node].virtlayer] != "VIMAGE"} {
+    #Dont show popup window if the node virtlayer is different from VIRTUALIZED
+    if { [[nodeType $node].virtlayer] != "VIRTUALIZED" } {
     	return
     }
     #Determine node coordinates
@@ -68,7 +68,7 @@ proc showCfgPopup { c node title x y } {
     $c delete -withtag showCfgPopup
     #Show command output
     set popup [$c create text $x $y \
-    			-text $title -tag "showCfgPopup" \
+    		-text $title -tag "showCfgPopup" \
 			-font "Courier $defaultFontSize" -justify left -anchor nw]
     #Create frame for the command output
     set box [$c bbox $popup]
@@ -151,7 +151,7 @@ proc deleteAndShowPopup { c title x y } {
     $c delete -withtag showCfgPopup
     #Show command output
     set popup [$c create text $x $y \
-    			-text $title -tag "showCfgPopup" \
+    		-text $title -tag "showCfgPopup" \
 			-font "Courier $defaultFontSize" -justify left -anchor nw]
     #Create frame for the command output
     set box [$c bbox $popup]
@@ -183,7 +183,7 @@ proc showRoute { c node2 } {
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
     upvar 0 ::cf::[set ::curcfg]::eid eid
     #Route can only be drawn in exec mode
-    if {$oper_mode != "exec"} {
+    if { $oper_mode != "exec" } {
 	    return
     }
     #Determine selected node
@@ -194,16 +194,16 @@ proc showRoute { c node2 } {
     #Draw route only if 'Route' option is selected form 'Show' menu
     if { $showCfg == "route"} {
 	#Draw route only if one node is selected
-    	if {[llength $selected] != 1} {
-		if {[llength $selected] != 0} {
+    	if { [llength $selected] != 1 } {
+		if { [llength $selected] != 0 } {
 	    	    set line "To show route, only one node can be selected."
 	    	    .bottom.textbox config -text "$line"
     		}
 	} else {
 	    set node1 $selected
 	    #Draw route only if both nodes work on network layer
-	    set type1 [[typemodel $node1].layer]
-	    set type2 [[typemodel $node2].layer]
+	    set type1 [[nodeType $node1].layer]
+	    set type2 [[nodeType $node2].layer]
 	    if { $node1 != $node2 && $type1 == "NETWORK" && $type2 == "NETWORK"} {
 		#User notification
     		set line "Please wait. Route is being calculated."
@@ -214,7 +214,7 @@ proc showRoute { c node2 } {
 		set ifcs [lsort -ascii [ifcList $node2]]
 		#Make your own traceroute
 		set ifc [lindex $ifcs 0]
-		set ip [getIfcIPv4addr $node2 $ifc]
+		set ip [lindex [getIfcIPv4addrs $node2 $ifc] 0]
 		set slashPlace [string first "/" $ip]
 		set ipAddr [string range $ip 0 [expr $slashPlace-1]]
 		set nodeId "$eid.$node1"
@@ -277,7 +277,7 @@ proc findNode { c ipAddr } {
     set nodeList {}
     foreach obj [$c find withtag node] {
     	set node [lindex [$c gettags $obj] 1]
-    	set type [[typemodel $node].layer]
+    	set type [[nodeType $node].layer]
     	if { $type == "NETWORK" } {
 	    lappend nodeList $node
 	    incr i
@@ -289,7 +289,7 @@ proc findNode { c ipAddr } {
     	set node [lindex $nodeList $j]
     	set ifcs [lsort -ascii [ifcList $node]]
     	foreach ifc $ifcs {
-    	set ip [getIfcIPv4addr $node $ifc]
+    	set ip [lindex [getIfcIPv4addrs $node $ifc] 0]
     	set slashPlace [string first "/" $ip]
     	set addr [string range $ip 0 [expr $slashPlace-1]]
     	    if {$addr == $ipAddr} {
@@ -312,7 +312,6 @@ proc findNode { c ipAddr } {
 #   * node1 -- first node
 #   * node2 -- second node
 #****
-
 proc drawLine { c node1 node2 } {
     global activetool
     set xy1 [getNodeCoords $node1]
