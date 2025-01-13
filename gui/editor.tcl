@@ -45,7 +45,6 @@
 #   Updates the undo log. Writes the current configuration to the 
 #   undolog array and updates the undolevel variable.
 #****
-
 proc updateUndoLog {} {
     upvar 0 ::cf::[set ::curcfg]::undolevel undolevel
     upvar 0 ::cf::[set ::curcfg]::redolevel redolevel
@@ -86,6 +85,7 @@ proc undo {} {
     upvar 0 ::cf::[set ::curcfg]::undolevel undolevel
     upvar 0 ::cf::[set ::curcfg]::undolog undolog
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
+    global showTree
 
     if {$oper_mode == "edit" && $undolevel > 0} {
 	.menubar.edit entryconfigure "Redo" -state normal
@@ -96,6 +96,10 @@ proc undo {} {
 	.panwin.f1.c config -cursor watch
 	loadCfg $undolog($undolevel)
 	switchCanvas none
+
+	if { $showTree } {
+	    refreshTopologyTree
+	}
     }
 }
 
@@ -115,6 +119,7 @@ proc redo {} {
     upvar 0 ::cf::[set ::curcfg]::redolevel redolevel
     upvar 0 ::cf::[set ::curcfg]::undolog undolog
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
+    global showTree
 
     if {$oper_mode == "edit" && $redolevel > $undolevel} {
 	incr undolevel
@@ -127,6 +132,10 @@ proc redo {} {
 	.panwin.f1.c config -cursor watch
 	loadCfg $undolog($undolevel)
 	switchCanvas none
+
+	if { $showTree } {
+	    refreshTopologyTree
+	}
     }
 }
 
@@ -173,11 +182,11 @@ proc l3IfcName {lnode rnode} {
     }
 }
 
-#****f* editor.tcl/listLANNodes
+#****f* editor.tcl/listLANnodes
 # NAME
-#   listLANNodes -- list LAN nodes
+#   listLANnodes -- list LAN nodes
 # SYNOPSIS
-#   set l2peers [listLANNodes $l2node $l2peers]
+#   set l2peers [listLANnodes $l2node $l2peers]
 # FUNCTION
 #   Recursive function for finding all link layer nodes that are 
 #   connected to node l2node. Returns the list of all link layer 
@@ -191,8 +200,8 @@ proc l3IfcName {lnode rnode} {
 proc listLANnodes { l2node l2peers } {
     lappend l2peers $l2node
     foreach ifc [ifcList $l2node] {
-	set peer [logicalPeerByIfc $l2node $ifc]
-	if {[[typemodel $peer].layer] == "LINK" &&  [nodeType $peer] != "rj45"} {
+	lassign [logicalPeerByIfc $l2node $ifc] peer -
+	if {[[nodeType $peer].layer] == "LINK" &&  [nodeType $peer] != "rj45"} {
 	    if { [lsearch $l2peers $peer] == -1 } {
 		set l2peers [listLANnodes $peer $l2peers]
 	    }
@@ -234,21 +243,21 @@ proc checkIntRange { str low high } {
     return 1
 }
 
-#****f* editor.tcl/focusAndFlash 
+#****f* editor.tcl/focusAndFlash
 # NAME
 #   focusAndFlash -- focus and flash
 # SYNOPSIS
 #   focusAndFlash $W $count
 # FUNCTION
 #   This procedure sets the focus on the bad entry field
-#   and on this field it provides an effect of flashing 
+#   and on this field it provides an effect of flashing
 #   for approximately 1 second.
 # INPUTS
 #   * W -- textbox field that caused the bad entry
 #   * count -- the parameter that causes flashes.
 #   It can be left blank.
 #****
-proc focusAndFlash {W {count 9}} {
+proc focusAndFlash { W { count 9 } } {
     global badentry
 
     set fg black
@@ -259,18 +268,23 @@ proc focusAndFlash {W {count 9}} {
     } else {
 	set badentry 1
     }
-    focus -force $W
-    if {$count<1} {
-	$W configure -foreground $fg -background $bg
-	set badentry 0
-    } else {
-	if {$count%2} {
-	    $W configure -foreground $bg -background $fg
-	} else {
+
+    try {
+	focus -force $W
+    } on ok {} {
+	if { $count < 1 } {
 	    $W configure -foreground $fg -background $bg
+	    set badentry 0
+	} else {
+	    if { $count % 2 } {
+		$W configure -foreground $bg -background $fg
+	    } else {
+		$W configure -foreground $fg -background $bg
+	    }
+
+	    after 200 [list focusAndFlash $W [expr {$count - 1}]]
 	}
-	after 200 [list focusAndFlash $W [expr {$count - 1}]]
-    }
+    } on error {} {}
 }
 
 #****f* editor.tcl/setZoom
@@ -464,15 +478,15 @@ proc routerDefaultsApply { wi } {
     upvar 0 ::cf::[set ::curcfg]::node_list node_list
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
     global changed router_model routerDefaultsModel router_ConfigModel
-    global routerRipEnable routerRipngEnable routerOspfEnable routerOspf6Enable
+    global routerRipEnable routerRipngEnable routerOspfEnable routerOspf6Enable routerBgpEnable
     global rdconfig
 
     lset rdconfig 0 $routerRipEnable
     lset rdconfig 1 $routerRipngEnable
     lset rdconfig 2 $routerOspfEnable 
     lset rdconfig 3 $routerOspf6Enable	
+    lset rdconfig 4 $routerBgpEnable
     set routerDefaultsModel $router_model 	
-    set model frr
     set selected_node_list [selectedNodes]
     set empty {}
 
@@ -486,15 +500,18 @@ proc routerDefaultsApply { wi } {
 		    set ripngEnable [lindex $rdconfig 1]
 		    set ospfEnable [lindex $rdconfig 2]
 		    set ospf6Enable [lindex $rdconfig 3]
+		    set bgpEnable [lindex $rdconfig 4]
 		    setNodeProtocolRip $node $ripEnable
 		    setNodeProtocolRipng $node $ripngEnable
 		    setNodeProtocolOspfv2 $node $ospfEnable
 		    setNodeProtocolOspfv3 $node $ospf6Enable
+		    setNodeProtocolBgp $node $bgpEnable
 		} else {
 		    $wi.nbook.nf1.protocols.rip configure -state disabled
 		    $wi.nbook.nf1.protocols.ripng configure -state disabled
 		    $wi.nbook.nf1.protocols.ospf configure -state disabled
 		    $wi.nbook.nf1.protocols.ospf6 configure -state disabled
+		    $wi.nbook.nf1.protocols.bgp configure -state disabled
 		}
 		set changed 1
 	    }
@@ -509,15 +526,18 @@ proc routerDefaultsApply { wi } {
 		    set ripngEnable [lindex $rdconfig 1]
 		    set ospfEnable [lindex $rdconfig 2]
 		    set ospf6Enable [lindex $rdconfig 3]
+		    set bgpEnable [lindex $rdconfig 4]
 		    setNodeProtocolRip $node  $ripEnable
 		    setNodeProtocolRipng $node $ripngEnable
 		    setNodeProtocolOspfv2 $node $ospfEnable
 		    setNodeProtocolOspfv3 $node $ospf6Enable
+		    setNodeProtocolBgp $node $bgpEnable
 		} else {
 		    $wi.nbook.nf1.protocols.rip configure -state disabled
 		    $wi.nbook.nf1.protocols.ripng configure -state disabled
 		    $wi.nbook.nf1.protocols.ospf configure -state disabled
 		    $wi.nbook.nf1.protocols.ospf6 configure -state disabled
+		    $wi.nbook.nf1.protocols.bgp configure -state disabled
 		}
 		set changed 1
 	    }		
@@ -649,7 +669,7 @@ proc topologyElementsTree {} {
 
 	pack $f.treegrid -side right -fill y
 	grid $f.tree $f.vscroll -in $f.treegrid -sticky nsew
-    grid $f.hscroll -in $f.treegrid -sticky nsew
+        grid $f.hscroll -in $f.treegrid -sticky nsew
 	grid columnconfig $f.treegrid 0 -weight 1
 	grid rowconfigure $f.treegrid 0 -weight 1
 	
@@ -658,21 +678,21 @@ proc topologyElementsTree {} {
 	$f.tree column #0 -width 200 -stretch 0
 	$f.tree column state -width 60 -anchor center -stretch 0
 	$f.tree column nat -width 40 -anchor center -stretch 0
-    $f.tree column MAC -width 120 -anchor center -stretch 0
+        $f.tree column MAC -width 120 -anchor center -stretch 0
 	$f.tree column IPv4 -width 100 -anchor center -stretch 0
 	$f.tree column IPv6 -width 100 -anchor center -stretch 0
 	$f.tree column canvas -width 60 -anchor center -stretch 0
 	$f.tree heading #0 -text "(Expand All)"
 	$f.tree heading state -text "State"
 	$f.tree heading nat -text "NAT"
-    $f.tree heading MAC -text "MAC address"
+        $f.tree heading MAC -text "MAC address"
 	$f.tree heading IPv4 -text "IPv4 address"
 	$f.tree heading IPv6 -text "IPv6 address"
 	$f.tree heading canvas -text "Canvas"
 
 
 	#punjenje stabla podacima o cvorovima
-    global nodetags
+        global nodetags
 	set nodetags ""
 	$f.tree insert {} end -id nodes -text "Nodes" -open true -tags nodes
 	$f.tree focus nodes
@@ -687,9 +707,9 @@ proc topologyElementsTree {} {
 		    $f.tree insert $node end -id $node$ifc -text "$ifc" -tags $node$ifc
 		    $f.tree set $node$ifc state [getIfcOperState $node $ifc]
 		    $f.tree set $node$ifc nat [getIfcNatState $node $ifc]
-		    $f.tree set $node$ifc IPv4 [getIfcIPv4addr $node $ifc]
-		    $f.tree set $node$ifc IPv6 [getIfcIPv6addr $node $ifc]
-            $f.tree set $node$ifc MAC [getIfcMACaddr $node $ifc]
+		    $f.tree set $node$ifc IPv4 [join [getIfcIPv4addrs $node $ifc] ";"]
+		    $f.tree set $node$ifc IPv6 [join [getIfcIPv6addrs $node $ifc] ";"]
+                    $f.tree set $node$ifc MAC [getIfcMACaddr $node $ifc]
 		}
 	    }
 	}
@@ -920,9 +940,9 @@ proc refreshTopologyTree {} {
 		    $f.tree insert $node end -id $node$ifc -text "$ifc" -tags $node$ifc
 		    $f.tree set $node$ifc state [getIfcOperState $node $ifc]
 		    $f.tree set $node$ifc nat [getIfcNatState $node $ifc]
-		    $f.tree set $node$ifc IPv4 [getIfcIPv4addr $node $ifc]
-		    $f.tree set $node$ifc IPv6 [getIfcIPv6addr $node $ifc]
-            $f.tree set $node$ifc MAC [getIfcMACaddr $node $ifc]
+		    $f.tree set $node$ifc IPv4 [join [getIfcIPv4addrs $node $ifc] ";"]
+		    $f.tree set $node$ifc IPv6 [join [getIfcIPv6addrs $node $ifc] ";"]
+                    $f.tree set $node$ifc MAC [getIfcMACaddr $node $ifc]
 	    }
 	}
     }
