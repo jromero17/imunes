@@ -35,7 +35,6 @@
 #  This file is considered to contain all the help information.
 #  Currently it contains only copyright information.
 #****
-
 set copyright {
 
 Copyright 2004-2014 University of Zagreb.
@@ -43,7 +42,6 @@ Copyright 2004-2014 University of Zagreb.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
 are met:
-
 1. Redistributions of source code must retain the above copyright
    notice, this list of conditions and the following disclaimer.
 2. Redistributions in binary form must reproduce the above copyright
