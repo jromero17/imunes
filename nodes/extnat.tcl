@@ -25,6 +25,7 @@
 
 # $Id: extnat.tcl 63 2023-11-01 17:45:50Z dsalopek $
 
+
 #****h* imunes/extnat.tcl
 # NAME
 #  extnat.tcl -- defines extnat specific procedures
@@ -181,12 +182,12 @@ proc $MODULE.layer {} {
 # SYNOPSIS
 #   set layer [extnat.virtlayer]
 # FUNCTION
-#   Returns the layer on which the pc is instantiated i.e. returns NETGRAPH.
+#   Returns the layer on which the pc is instantiated i.e. returns NATIVE.
 # RESULT
-#   * layer -- set to NETGRAPH
+#   * layer -- set to NATIVE
 #****
 proc $MODULE.virtlayer {} {
-    return NETGRAPH
+    return NATIVE
 }
 
 #****f* extnat.tcl/extnat.shellcmds
@@ -259,7 +260,7 @@ proc $MODULE.shutdown { eid node } {
     set ifc [lindex [ifcList $node] 0]
     if { "$ifc" != "" } {
 	killExtProcess "wireshark.*[getNodeName $node].*\\($eid\\)"
-	killExtProcess "xterm -T Capturing $eid-$node -e tcpdump -ni $eid-$node"
+	killExtProcess "xterm -name imunes-terminal -T Capturing $eid-$node -e tcpdump -ni $eid-$node"
 	stopExternalConnection $eid $node
 	unsetupExtNat $eid $node $ifc
     }
@@ -330,8 +331,8 @@ proc $MODULE.configGUI { c node } {
     set treecolumns {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "extnat configuration"
-    configGUI_nodeName $wi $node "Host interface:"
+    wm title $wi [mc "extnat configuration"]
+    configGUI_nodeName $wi $node [mc "Host interface:"]
 
     configGUI_externalIfcs $wi $node
 
