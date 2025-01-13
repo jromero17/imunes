@@ -25,8 +25,9 @@
 # This work was supported in part by the Croatian Ministry of Science
 # and Technology through the research contract #IP-2003-143.
 #
+
 global vroot_unionfs vroot_linprocfs ifc_dad_disable regular_termination \
-    devfs_number hostsAutoAssign linkJitterConfiguration ipsecSecrets \
+    devfs_number auto_etc_hosts linkJitterConfiguration ipsecSecrets \
     ipsecConf ipFastForwarding
 
 set linkJitterConfiguration 0
@@ -35,7 +36,7 @@ set vroot_linprocfs 0
 set ifc_dad_disable 0
 set regular_termination 1
 set devfs_number 46837
-set hostsAutoAssign 0
+set auto_etc_hosts 0
 set ipFastForwarding 0
 
 #****f* exec.tcl/statline
@@ -52,10 +53,17 @@ set ipFastForwarding 0
 proc statline { line } {
     global execMode
 
-    if {$execMode == "batch"} {
+    if { $execMode == "batch" } {
 	puts $line
 	flush stdout
     } else {
+	global debug
+
+	if { $debug } {
+	    puts $line
+	    flush stdout
+	}
+
 	.bottom.textbox config -text "$line"
 	animateCursor
     }
@@ -73,10 +81,11 @@ proc statline { line } {
 #   * total -- total number of steps
 #****
 proc displayBatchProgress { prgs tot } {
-    global execMode
-    if {$execMode == "batch"} {
+    global execMode debug
+
+    if { $debug || $execMode == "batch" } {
 	puts -nonewline "\r                                                "
-	puts -nonewline "\r> $prgs/$tot"
+	puts -nonewline "\r> $prgs/$tot "
 	flush stdout
     }
 }
@@ -329,10 +338,10 @@ proc spawnShellExec {} {
 	    return
 	}
     }
-    if { [[typemodel $node].virtlayer] != "VIMAGE" } {
+    if { [[nodeType $node].virtlayer] != "VIRTUALIZED" } {
 	nodeConfigGUI .panwin.f1.c $node
     } else {
-	set cmd [lindex [existingShells [[typemodel $node].shellcmds] $node] 0]
+	set cmd [lindex [existingShells [[nodeType $node].shellcmds] $node] 0]
 	if { $cmd == "" } {
 	    return
 	}
@@ -372,14 +381,14 @@ proc fetchNodeConfiguration {} {
 		    setIfcMACaddr $node $ifc $macaddr
 		} elseif {[regexp {^\tinet6 (?!fe80:)([^ ]+) prefixlen ([^ ]+)} $line -> ip6addr mask]} {
 		    if {$ip6Set == 0} {
-			setIfcIPv6addr $node $ifc $ip6addr/$mask
+			setIfcIPv6addrs $node $ifc $ip6addr/$mask
 			set ip6Set 1
 		    }
 		} elseif {[regexp {^\tinet ([^ ]+) netmask ([^ ]+) } $line \
 		     -> ip4addr netmask]} {
 		    if {$ip4Set == 0} {
 			set length [ip::maskToLength $netmask]
-			setIfcIPv4addr $node $ifc $ip4addr/$length
+			setIfcIPv4addrs $node $ifc $ip4addr/$length
 			set ip4Set 1
 		    }
 		}
@@ -397,12 +406,12 @@ proc fetchNodeConfiguration {} {
 		     -> ip4addr netmask]} {
 		    if {$ip4Set == 0} {
 			set length [ip::maskToLength $netmask]
-			setIfcIPv4addr $node $ifc $ip4addr/$length
+			setIfcIPv4addrs $node $ifc $ip4addr/$length
 			set ip4Set 1
 		    }
 		} elseif {[regexp {^\s*inet6 addr:\s(?!fe80:)([^ ]+)} $line -> ip6addr]} {
 		    if {$ip6Set == 0} {
-			setIfcIPv6addr $node $ifc $ip6addr
+			setIfcIPv6addrs $node $ifc $ip6addr
 			set ip6Set 1
 		    }
 		} elseif {[regexp {MTU:([^ ]+)} $line -> mtuvalue]} {
@@ -487,16 +496,15 @@ proc dumpLinksToFile { path } {
 	}
 	set lnode1 [lindex [linkPeers $link] 0]
 	set lnode2 [lindex [linkPeers $link] 1]
-	set ifname1 [ifcByPeer $lnode1 $lnode2]
-	set ifname2 [ifcByPeer $lnode2 $lnode1]
+	set ifname1 [lindex [linkPeersIfaces $link] 0]
+	set ifname2 [lindex [linkPeersIfaces $link] 1]
 
-	if { [getLinkMirror $link] != "" } {
-	    set mirror_link [getLinkMirror $link]
+	set mirror_link [getLinkMirror $link]
+	if { $mirror_link != "" } {
 	    lappend skipLinks $mirror_link
 
-	    set p_lnode2 $lnode2
-	    set lnode2 [lindex [linkPeers $mirror_link] 0]
-	    set ifname2 [ifcByPeer $lnode2 [getNodeMirror $p_lnode2]]
+	    lassign "[lindex [linkPeers $mirror_link] 0] $lnode1" lnode1 lnode2
+	    lassign "[lindex [linkPeersIfaces $mirror_link] 0] $ifname1" ifname1 ifname2
 	}
 
 	set name1 [getNodeName $lnode1]
@@ -664,7 +672,7 @@ proc captureOnExtIfc { node command } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
 
     if { $command == "tcpdump" } {
-	exec xterm -T "Capturing $eid-$node" -e "tcpdump -ni $eid-$node" 2> /dev/null &
+	exec xterm -name imunes-terminal -T "Capturing $eid-$node" -e "tcpdump -ni $eid-$node" 2> /dev/null &
     } else {
 	exec $command -o "gui.window_title:[getNodeName $node] ($eid)" -k -i $eid-$node 2> /dev/null &
     }
