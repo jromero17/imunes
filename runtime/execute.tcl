@@ -37,7 +37,6 @@
 # RESULT
 #   * eid -- a new generated experiment ID
 #****
-
 proc genExperimentId { } {
     global isOSlinux
 
@@ -153,6 +152,30 @@ proc execCmdsNode { node cmds } {
     return $output
 }
 
+#****f* exec.tcl/execCmdsNodeBkg
+# NAME
+#   execCmdsNodeBkg -- execute a set of commands on virtual node
+# SYNOPSIS
+#   execCmdsNodeBkg $node $cmds
+# FUNCTION
+#   Executes commands on a virtual node (in the background).
+# INPUTS
+#   * node -- virtual node id
+#   * cmds -- list of commands to execute
+#****
+proc execCmdsNodeBkg { node cmds { output "" } } {
+    set cmds_str ""
+    foreach cmd $cmds {
+	if { $output != "" } {
+	    set cmd "$cmd >> $output"
+	}
+
+	set cmds_str "$cmds_str $cmd ;"
+    }
+
+    execCmdNodeBkg $node $cmds_str
+}
+
 #****f* exec.tcl/createExperimentFiles
 # NAME
 #   createExperimentFiles -- create experiment files
@@ -245,7 +268,7 @@ proc createExperimentScreenshot { eid } {
 	-data .panwin.f1.c} err]
     if { ($error == 0) } {
 	screenshot write $fileName -format png
-	catch {exec convert $fileName -resize 300x210\! $fileName\2}
+	catch { exec magick $fileName -resize 300x210\! $fileName\2 }
 	catch {exec mv $fileName\2 $fileName}
     }
 }
@@ -405,7 +428,11 @@ proc l3node.ipsecInit { node } {
 	return
     }
 
+    set ipsecSecrets "# /etc/ipsec.secrets - strongSwan IPsec secrets file\n\n"
     set config_content [getNodeIPsecItem $node "configuration"]
+
+    #setNodeIPsecSetting $node "%default" "keyexchange" "ikev2"
+    #set ipsecConf "${ipsecConf}config setup\n"
 
     foreach item $config_content {
 	set element [lindex $item 0]
@@ -429,15 +456,16 @@ proc l3node.ipsecInit { node } {
 	    set ipsecConf "$ipsecConf        $setting\n"
 	}
 	if { $hasKey && $hasRight } {
-	    set ipsecSecrets "$right : PSK $psk_key"
+	    set ipsecSecrets "${ipsecSecrets}$right : PSK $psk_key\n"
 	}
     }
 
     delNodeIPsecElement $node "configuration" "conn %default"
 
+    set ca_cert [getNodeIPsecItem $node "ca_cert"]
     set local_cert [getNodeIPsecItem $node "local_cert"]
     set ipsecret_file [getNodeIPsecItem $node "local_key_file"]
-    ipsecFilesToNode $node $local_cert $ipsecret_file
+    ipsecFilesToNode $node $ca_cert $local_cert $ipsecret_file
 
     set ipsec_log_level [getNodeIPsecItem $node "ipsec-logging"]
     if { $ipsec_log_level != "" } {
@@ -501,7 +529,7 @@ proc deployCfg {} {
     set pseudoNodesCount 0
     foreach node $node_list {
 	if { [nodeType $node] != "pseudo" } {
-	    if { [[typemodel $node].virtlayer] != "VIMAGE" } {
+	    if { [[nodeType $node].virtlayer] != "VIRTUALIZED" } {
 		lappend l2nodes $node
 	    } else {
 		lappend l3nodes $node
@@ -564,13 +592,14 @@ proc deployCfg {} {
 	pipesCreate
 	instantiateNodes $l2nodes $l2nodeCount $w
 	statline "Waiting for $l2nodeCount L2 node(s) to start..."
+	waitForInstantiateNodes $l2nodes $l2nodeCount $w
 	pipesClose
 
 	#statline "Copying host files to $l3nodeCount L3 node(s)..."
 	#copyFilesToNodes $l3nodes $l3nodeCount $w
 
 	statline "Starting services for NODEINST hook..."
-	services start "NODEINST"
+	services start "NODEINST" "bkg" $allNodes
 
 	statline "Creating interfaces on nodes..."
 	pipesCreate
@@ -591,7 +620,7 @@ proc deployCfg {} {
 	pipesClose
 
 	statline "Starting services for LINKINST hook..."
-	services start "LINKINST"
+	services start "LINKINST" "bkg" $allNodes
 
 	pipesCreate
 	statline "Configuring node(s)..."
@@ -601,7 +630,7 @@ proc deployCfg {} {
 	pipesClose
 
 	statline "Starting services for NODECONF hook..."
-	services start "NODECONF"
+	services start "NODECONF" "bkg" $l3nodes
     } on error err {
 	finishExecuting 0 "$err" $w
 	return
@@ -626,15 +655,15 @@ proc prepareSystem {} {
 
     set running_eids [getResumableExperiments]
     if {$execMode != "batch"} {
-	set eid ${eid_base}[string range $::curcfg 1 end]
+	set eid ${eid_base}[string range $::curcfg 3 end]
 	while { $eid in $running_eids } {
 	    set eid_base [genExperimentId]
-	    set eid ${eid_base}[string range $::curcfg 1 end]
+	    set eid ${eid_base}[string range $::curcfg 3 end]
 	}
     } else {
 	set eid $eid_base
 	while { $eid in $running_eids } {
-	    puts -nonewline "Experiment ID $eid_base already in use, trying "
+	    puts -nonewline "Experiment ID $eid already in use, trying "
 	    set eid [genExperimentId]
 	    puts "$eid."
 	}
@@ -655,11 +684,11 @@ proc instantiateNodes { nodes nodeCount w } {
     foreach node $nodes {
 	displayBatchProgress $batchStep $nodeCount
 
-	if { [info procs [typemodel $node].instantiate] != "" } {
+	if { [info procs [nodeType $node].instantiate] != "" } {
 	    try {
-		[typemodel $node].instantiate $eid $node
+		[nodeType $node].instantiate $eid $node
 	    } on error err {
-		return -code error "Error in '[typemodel $node].instantiate $eid $node': $err"
+		return -code error "Error in '[nodeType $node].instantiate $eid $node': $err"
 	    }
 	    pipesExec ""
 	}
@@ -726,11 +755,11 @@ proc setupNodeNamespaces { nodes nodeCount w } {
     foreach node $nodes {
 	displayBatchProgress $batchStep $nodeCount
 
-	if { [info procs [typemodel $node].setupNamespace] != "" } {
+	if { [info procs [nodeType $node].setupNamespace] != "" } {
 	    try {
-		[typemodel $node].setupNamespace $eid $node
+		[nodeType $node].setupNamespace $eid $node
 	    } on error err {
-		return -code error "Error in '[typemodel $node].setupNamespace $eid $node': $err"
+		return -code error "Error in '[nodeType $node].setupNamespace $eid $node': $err"
 	    }
 	    pipesExec ""
 	}
@@ -798,9 +827,9 @@ proc initConfigureNodes { nodes nodeCount w } {
 	displayBatchProgress $batchStep $nodeCount
 
 	try {
-	    [typemodel $node].initConfigure $eid $node
+	    [nodeType $node].initConfigure $eid $node
 	} on error err {
-	    return -code error "Error in '[typemodel $node].initConfigure $eid $node': $err"
+	    return -code error "Error in '[nodeType $node].initConfigure $eid $node': $err"
 	}
 	pipesExec ""
 
@@ -868,12 +897,12 @@ proc createNodesInterfaces { nodes nodeCount w } {
     foreach node $nodes {
 	displayBatchProgress $batchStep $nodeCount
 
-	if {[info procs [typemodel $node].createIfcs] != ""} {
+	if {[info procs [nodeType $node].createIfcs] != ""} {
 	    set ifcs [ifcList $node]
 	    try {
-		[typemodel $node].createIfcs $eid $node $ifcs
+		[nodeType $node].createIfcs $eid $node $ifcs
 	    } on error err {
-		return -code error "Error in '[typemodel $node].createIfcs $eid $node $ifcs': $err"
+		return -code error "Error in '[nodeType $node].createIfcs $eid $node $ifcs': $err"
 	    }
 	    pipesExec ""
 	}
@@ -907,20 +936,17 @@ proc createLinks { links linkCount w } {
 
 	set lnode1 [lindex [linkPeers $link] 0]
 	set lnode2 [lindex [linkPeers $link] 1]
-	set ifname1 [ifcByPeer $lnode1 $lnode2]
-	set ifname2 [ifcByPeer $lnode2 $lnode1]
+	set ifname1 [lindex [linkPeersIfaces $link] 0]
+	set ifname2 [lindex [linkPeersIfaces $link] 1]
 
 	set msg "Creating link $link"
 	set mirror_link [getLinkMirror $link]
 	if { $mirror_link != "" } {
-	    set i [lsearch -exact $pending_links $mirror_link]
-	    set pending_links [lreplace $pending_links $i $i]
-
 	    set msg "Creating link $link/$mirror_link"
+	    set pending_links [removeFromList $pending_links $mirror_link]
 
-	    set p_lnode2 $lnode2
-	    set lnode2 [lindex [linkPeers $mirror_link] 0]
-	    set ifname2 [ifcByPeer $lnode2 [getNodeMirror $p_lnode2]]
+	    lassign "[lindex [linkPeers $mirror_link] 0] $lnode1" lnode1 lnode2
+	    lassign "[lindex [linkPeersIfaces $mirror_link] 0] $ifname1" ifname1 ifname2
 	}
 
 	displayBatchProgress $batchStep $linkCount
@@ -966,20 +992,17 @@ proc configureLinks { links linkCount w } {
 
 	set lnode1 [lindex [linkPeers $link] 0]
 	set lnode2 [lindex [linkPeers $link] 1]
-	set ifname1 [ifcByPeer $lnode1 $lnode2]
-	set ifname2 [ifcByPeer $lnode2 $lnode1]
+	set ifname1 [lindex [linkPeersIfaces $link] 0]
+	set ifname2 [lindex [linkPeersIfaces $link] 1]
 
 	set msg "Configuring link $link"
-	if { [getLinkMirror $link] != "" } {
-	    set mirror_link [getLinkMirror $link]
-	    set i [lsearch -exact $pending_links $mirror_link]
-	    set pending_links [lreplace $pending_links $i $i]
-
+	set mirror_link [getLinkMirror $link]
+	if { $mirror_link != "" } {
 	    set msg "Configuring link $link/$mirror_link"
+	    set pending_links [removeFromList $pending_links $mirror_link]
 
-	    set p_lnode2 $lnode2
-	    set lnode2 [lindex [linkPeers $mirror_link] 0]
-	    set ifname2 [ifcByPeer $lnode2 [getNodeMirror $p_lnode2]]
+	    lassign "[lindex [linkPeers $mirror_link] 0] $lnode1" lnode1 lnode2
+	    lassign "[lindex [linkPeersIfaces $mirror_link] 0] $ifname1" ifname1 ifname2
 	}
 
 	displayBatchProgress $batchStep $linkCount
@@ -1030,11 +1053,11 @@ proc executeConfNodes { nodes nodeCount w } {
 	    setDefaultIPv6routes $node $all_routes6
 	}
 
-	if {[info procs [typemodel $node].start] != ""} {
+	if {[info procs [nodeType $node].start] != ""} {
 	    try {
-		[typemodel $node].start $eid $node
+		[nodeType $node].start $eid $node
 	    } on error err {
-		return -code error "Error in '[typemodel $node].start $eid $node': $err"
+		return -code error "Error in '[nodeType $node].start $eid $node': $err"
 	    }
 	}
 	pipesExec ""
@@ -1061,43 +1084,61 @@ proc executeConfNodes { nodes nodeCount w } {
 # NAME
 #   generateHostsFile -- generate hosts file
 # SYNOPSIS
-#   generateHostsFile $node
+#   generateHostsFile $node_id
 # FUNCTION
 #   Generates /etc/hosts file on the given node containing all the nodes in the
 #   topology.
 # INPUTS
-#   * node -- node id
+#   * node_id -- node id
 #****
-proc generateHostsFile { node } {
+proc generateHostsFile { node_id } {
     upvar 0 ::cf::[set ::curcfg]::node_list node_list
     upvar 0 ::cf::[set ::curcfg]::etchosts etchosts
-    global hostsAutoAssign
 
-    if { $hostsAutoAssign == 1 } {
-	if { [[typemodel $node].virtlayer] == "VIMAGE" } {
-	    if { $etchosts == "" } {
-		foreach iter $node_list {
-		    if { [[typemodel $iter].virtlayer] == "VIMAGE" } {
-			foreach ifc [ifcList $iter] {
-			    if { $ifc != "" } {
-				set ipv4 [lindex [split [getIfcIPv4addr $iter $ifc] "/"] 0]
-				set ipv6 [lindex [split [getIfcIPv6addr $iter $ifc] "/"] 0]
-				set ifname [getNodeName $iter]
-				if { $ipv4 != "" } {
-				    set etchosts "$etchosts$ipv4	$ifname\n"
-				}
-				if { $ipv6 != "" } {
-				    set etchosts "$etchosts$ipv6	$ifname\n"
-				}
-				break
-			    }
-			}
+    global auto_etc_hosts
+
+    if { $auto_etc_hosts != 1 || [[nodeType $node_id].virtlayer] != "VIRTUALIZED" } {
+	return
+    }
+
+    if { $etchosts == "" } {
+	foreach other_node_id $node_list {
+	    if { [[nodeType $other_node_id].virtlayer] != "VIRTUALIZED" } {
+		continue
+	    }
+
+	    set ctr 0
+	    set ctr6 0
+	    foreach ifc [ifcList $other_node_id] {
+		if { $ifc == "" } {
+		    continue
+		}
+
+		set node_name [getNodeName $other_node_id]
+		foreach ipv4 [getIfcIPv4addrs $other_node_id $ifc] {
+		    set ipv4 [lindex [split $ipv4 "/"] 0]
+		    if { $ctr == 0 } {
+			set etchosts "$etchosts$ipv4	${node_name}\n"
+		    } else {
+			set etchosts "$etchosts$ipv4	${node_name}_${ctr}\n"
 		    }
+		    incr ctr
+		}
+
+		foreach ipv6 [getIfcIPv6addrs $other_node_id $ifc] {
+		    set ipv6 [lindex [split $ipv6 "/"] 0]
+		    if { $ctr6 == 0 } {
+			set etchosts "$etchosts$ipv6	${node_name}.6\n"
+		    } else {
+			set etchosts "$etchosts$ipv6	${node_name}_${ctr6}.6\n"
+		    }
+		    incr ctr6
 		}
 	    }
-	    writeDataToNodeFile $node /etc/hosts $etchosts
 	}
     }
+
+    writeDataToNodeFile $node_id /etc/hosts $etchosts
 }
 
 proc waitForConfStart { nodes nodeCount w } {
@@ -1206,7 +1247,7 @@ proc checkForErrors { nodes nodeCount w } {
 # SYNOPSIS
 #   startNodeFromMenu $node
 # FUNCTION
-#   Invokes the [typmodel $node].start procedure, along with services startup.
+#   Invokes the [nodeType $node].start procedure, along with services startup.
 # INPUTS
 #   * node -- node id
 #****
@@ -1236,9 +1277,9 @@ proc startNodeFromMenu { node } {
 	}
     }
 
+    services start "NODEINST" "" $node
+    services start "LINKINST" "" $node
     pipesCreate
-    services start "NODEINST" $node
-    services start "LINKINST" $node
     set allNodeCount 1
     try {
 	executeConfNodes $node 1 $w
@@ -1248,8 +1289,8 @@ proc startNodeFromMenu { node } {
 	finishExecuting 0 "$err" $w
 	return
     }
-    services start "NODECONF" $node
     pipesClose
+    services start "NODECONF" "" $node
 
     finishExecuting 1 "" $w
 }
