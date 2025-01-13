@@ -30,11 +30,10 @@
 # NAME
 #   ipv6.tcl -- file for handeling IPv6
 #****
-
-global ipv6 changeAddrRange6 changeAddressRange6
+global ipv6 change_subnet6 changeAddressRange6
 
 set ipv6 fc00::/64
-set changeAddrRange6 0
+set change_subnet6 0
 set changeAddressRange6 0
 
 #****f* ipv6.tcl/IPv6AddrApply
@@ -80,19 +79,19 @@ proc IPv6AddrApply { w } {
 # RESULT
 #   * ipnet -- returns the free IPv6 network address in the form "a $i". 
 #****
-proc findFreeIPv6Net { mask } {
-    upvar 0 ::cf::[set ::curcfg]::IPv6UsedList IPv6UsedList
+proc findFreeIPv6Net { mask { ipv6_used_list "" } } {
     global ipv6
 
-    if { $IPv6UsedList == "" } {
+    if { $ipv6_used_list == {} } {
 	set defip6net [ip::contract [ip::prefix $ipv6]]
 	set testnet [ip::contract "[string trimright $defip6net :]::"]
 	return $testnet
     } else {
 	set defip6net [ip::contract [ip::prefix $ipv6]]
+	set subnets [lsort -unique [lmap ip $ipv6_used_list {ip::contract [ip::prefix $ip]}]]
 	for { set i 0 } { $i <= 65535 } { incr i } {
 	    set testnet [ip::contract "[string trimright $defip6net :]:[format %x $i]::"]
-	    if { $testnet ni $IPv6UsedList } {
+	    if { $testnet ni $subnets } {
 		return $testnet
 	    }
 	}
@@ -116,58 +115,74 @@ proc findFreeIPv6Net { mask } {
 proc autoIPv6addr { node iface } {
     upvar 0 ::cf::[set ::curcfg]::IPv6UsedList IPv6UsedList
     global IPv6autoAssign
-    if {!$IPv6autoAssign} {
+    if { ! $IPv6autoAssign } {
 	return
     }
-    global changeAddrRange6 control changeAddressRange6 autorenumbered_ifcs6
-    set peer_ip6addrs {}
+    global change_subnet6 control changeAddressRange6 autorenumbered_ifcs6
+    #change_subnet6 - to change the subnet (1) or not (0)
+    #changeAddressRange6 - is this procedure called from 'changeAddressRange' (1 if true, otherwise 0)
+    #autorenumbered_ifcs6 - list of all interfaces that changed an address
 
-
-    if { [[typemodel $node].layer] != "NETWORK" } { 
+    set node_type [nodeType $node]
+    if { [$node_type.layer] != "NETWORK" } {
 	#
 	# Shouldn't get called at all for link-layer nodes
 	#
-	#puts "autoIPv6 called for a [[typemodel $node].layer] layer node"
+	#puts "autoIPv6 called for a [[nodeType $node].layer] layer node"
 	return
     }  
 
-    setIfcIPv6addr $node $iface ""
-    set peer_node [logicalPeerByIfc $node $iface]
+    set IPv6UsedList [removeFromList $IPv6UsedList [getIfcIPv6addrs $node $iface] "keep_doubles"]
 
-    if { [[typemodel $peer_node].layer] == "LINK" } {
-	foreach l2node [listLANnodes $peer_node {}] {
-	    foreach ifc [ifcList $l2node] {
-		set peer [logicalPeerByIfc $l2node $ifc]
-		set peer_if [ifcByLogicalPeer $peer $l2node]
-		set peer_ip6addr [getIfcIPv6addr $peer $peer_if]
-		if { $changeAddressRange6 == 1 } {
-		    if { [lsearch $autorenumbered_ifcs6 "$peer $peer_if"] != -1 } {
-			if { $peer_ip6addr != "" } {
-			    lappend peer_ip6addrs $peer_ip6addr
-			}   
+    setIfcIPv6addrs $node $iface ""
+    lassign [logicalPeerByIfc $node $iface] peer_node peer_if
+    set peer_ip6addrs {}
+    if { $peer_node != "" } {
+	if { [[nodeType $peer_node].layer] == "LINK" } {
+	    foreach l2node [listLANnodes $peer_node {}] {
+		foreach ifc [ifcList $l2node] {
+		    lassign [logicalPeerByIfc $l2node $ifc] peer peer_if
+		    set peer_ip6addr [getIfcIPv6addrs $peer $peer_if]
+		    if { $peer_ip6addr == "" } {
+			continue
 		    }
-		} else {
-		    if { $peer_ip6addr != "" } {
-			lappend peer_ip6addrs $peer_ip6addr
+
+		    if { $changeAddressRange6 == 1 } {
+			if { "$peer $peer_if" in $autorenumbered_ifcs6 } {
+			    lappend peer_ip6addrs {*}$peer_ip6addr
+			}
+		    } else {
+			lappend peer_ip6addrs {*}$peer_ip6addr
 		    }
 		}
 	    }
+	} else {
+	    set peer_ip6addrs [getIfcIPv6addrs $peer_node $peer_if]
 	}
-    } else {
-	set peer_if [ifcByLogicalPeer $peer_node $node]
-	set peer_ip6addr [getIfcIPv6addr $peer_node $peer_if]
-	set peer_ip6addrs $peer_ip6addr
     }
 
-    set targetbyte [expr 0x[[nodeType $node].IPAddrRange]]
-
-    if { $peer_ip6addrs != "" && $changeAddrRange6 == 0 } {
-	set ipaddr  [nextFreeIP6Addr [lindex $peer_ip6addrs 0] $targetbyte $peer_ip6addrs]
-	setIfcIPv6addr $node $iface $ipaddr
+    if { $peer_ip6addrs != "" && $change_subnet6 == 0 } {
+	set targetbyte [expr 0x[$node_type.IPAddrRange]]
+	set addr [nextFreeIP6Addr [lindex $peer_ip6addrs 0] $targetbyte $peer_ip6addrs]
     } else {
-	setIfcIPv6addr $node $iface "[findFreeIPv6Net 64][format %x $targetbyte]/64"
-	lappend IPv6UsedList [ip::contract [ip::prefix [getIfcIPv6addr $node $iface]]]
+	set addr [getNextIPv6addr $node_type $IPv6UsedList]
     }
+
+    setIfcIPv6addrs $node $iface $addr
+    lappend IPv6UsedList $addr
+}
+
+proc getNextIPv6addr { node_type existing_addrs } {
+    global IPv6autoAssign
+
+    if { ! $IPv6autoAssign } {
+	return
+    }
+
+    set targetbyte [expr 0x[$node_type.IPAddrRange]]
+
+    # TODO: enable changing IPv6 pool mask
+    return "[findFreeIPv6Net 64 $existing_addrs][format %x $targetbyte]/64"
 }
 
 #****f* ipv6.tcl/nextFreeIP6Addr
@@ -215,64 +230,6 @@ proc nextFreeIP6Addr { addr start peers } {
     return $ipaddr
 }
 
-#****f* ipv6.tcl/autoIPv6defaultroute 
-# NAME
-#   autoIPv6defaultroute -- automaticaly assign a default route 
-# SYNOPSIS
-#   autoIPv6defaultroute $node $iface 
-# FUNCTION
-#   searches the interface of the node for a router, if a router is found
-#   then it is a new default gateway. 
-# INPUTS
-#   * node -- default gateway is provided for this node 
-#   * iface -- the interface on witch we search for a new default gateway
-#****
-proc autoIPv6defaultroute { node iface } {
-    global IPv6autoAssign
-    if {!$IPv6autoAssign} {
-	return
-    }
-    if { [[typemodel $node].layer] != "NETWORK" || \
-	[isNodeRouter $node] } {
-	#
-	# Shouldn't get called at all for link-layer nodes
-	#
-	#puts "autoIPv6defaultroute called for [[typemodel $node].layer] node"
-	return
-    }
-
-    set peer_node [logicalPeerByIfc $node $iface]
-
-    if { [[typemodel $peer_node].layer] == "LINK" } {
-	foreach l2node [listLANnodes $peer_node {}] {
-	    foreach ifc [ifcList $l2node] {
-		set peer [logicalPeerByIfc $l2node $ifc]
-		if {! [isNodeRouter $peer] } {
-		    continue
-		}
-		set peer_if [ifcByLogicalPeer $peer $l2node]
-		set peer_ip6addr [getIfcIPv6addr $peer $peer_if]
-		if { $peer_ip6addr != "" } {
-		    set gw [lindex [split $peer_ip6addr /] 0]
-		    setStatIPv6routes $node [list "::/0 $gw"]
-		    return
-		}
-	    }
-	}
-    } else {
-	if {! [isNodeRouter $peer_node] } {
-	    return
-	}
-	set peer_if [ifcByLogicalPeer $peer_node $node]
-	set peer_ip6addr [getIfcIPv6addr $peer_node $peer_if]
-	if { $peer_ip6addr != "" } {
-	    set gw [lindex [split $peer_ip6addr /] 0]
-	    setStatIPv6routes $node [list "::/0 $gw"]
-	    return
-	}
-    }
-}
-
 #****f* ipv6.tcl/checkIPv6Addr 
 # NAME
 #   checkIPv6Addr -- check the IPv6 address 
@@ -287,37 +244,12 @@ proc autoIPv6defaultroute { node iface } {
 #     of a valid IP address, 1 otherwise
 #****
 proc checkIPv6Addr { str } {
-    set doublec false
-    set wordlist [split $str :]
-    set wordcnt [expr [llength $wordlist] - 1]
-    if { $wordcnt < 2 || $wordcnt > 7 } {
+    try {
+	ip::prefix $str
+    } on error {} {
 	return 0
     }
-    if { [lindex $wordlist 0] == "" } {
-	set wordlist [lreplace $wordlist 0 0 0]
-    }
-    if { [lindex $wordlist $wordcnt] == "" } {
-	set wordlist [lreplace $wordlist $wordcnt $wordcnt 0]
-    }
-    for { set i 0 } { $i <= $wordcnt } { incr i } {
-	set word [lindex $wordlist $i]
-	if { $word == "" } {
-	    if { $doublec == "true" } {
-		return 0
-	    }
-	    set doublec true
-	}
-	if { [string length $word] > 4 } {
-	    if { $i == $wordcnt } {
-		return [checkIPv4Addr $word]
-	    } else {
-		return 0
-	    }
-	}
-	if { [string is xdigit $word] == 0 } {
-	    return 0
-	}
-    }
+
     return 1
 }
 
@@ -365,7 +297,7 @@ proc checkIPv6Net { str } {
 proc checkIPv6Nets { str } {
     foreach net [split $str ";"] {
 	set net [string trim $net]
-	if { ![checkIPv6Net $net] } {
+	if { ! [checkIPv6Net $net] } {
 	    return 0
 	}
     }
