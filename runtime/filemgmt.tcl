@@ -25,6 +25,7 @@
 # This work was supported in part by Croatian Ministry of Science
 # and Technology through the research contract #IP-2003-143.
 #
+
 ##****h* imunes/filemgmt.tcl
 # NAME
 #  filemgmt.tcl -- file used for manipulation with files
@@ -66,10 +67,10 @@
 #   - opens dialog box for saving a file under new name  
 #****
 
-global currentFile fileTypes
+global currentFile file_types
 set currentFile ""
 
-set fileTypes {
+set file_types {
     { "IMUNES network configuration" {.imn} }
     { "All files" {*} }
 }
@@ -85,7 +86,7 @@ set fileTypes {
 proc newProject {} {
     global curcfg cfg_list
 
-    set curcfg [newObjectId cfg]
+    set curcfg [newObjectId $cfg_list "cfg"]
     lappend cfg_list $curcfg
     namespace eval ::cf::[set curcfg] {}
 
@@ -138,7 +139,7 @@ proc updateProjectMenu {} {
     foreach cfg $cfg_list {
 	set fname [set ::cf::[set cfg]::currentFile]
 	if { $fname == "" } {
-	    set fname "untitled[string range $cfg 1 end]"
+	    set fname "untitled[string range $cfg 3 end]"
 	}
 	.menubar.file add checkbutton -label $fname -variable curcfg \
 	    -onvalue $cfg -command switchProject
@@ -156,7 +157,7 @@ proc updateProjectMenu {} {
 proc switchProject {} {
     global curcfg showTree
     if {$curcfg == 0} {
-        set curcfg "c0"
+        set curcfg "cfg0"
     } 
     upvar 0 ::cf::[set ::curcfg]::currentFile currentFile
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
@@ -184,7 +185,7 @@ proc setWmTitle { fname } {
     global curcfg baseTitle imunesVersion imunesAdditions
 
     if { $fname == "" } {
-	set fname "untitled[string range $curcfg 1 end]"
+	set fname "untitled[string range $curcfg 3 end]"
     }
     wm title . "$baseTitle - $fname"
 }
@@ -266,9 +267,9 @@ proc saveFile { selectedFile } {
 #   Opens an open file dialog box.
 #****
 proc fileOpenDialogBox {} {
-    global fileTypes
+    global file_types
 
-    set selectedFile [tk_getOpenFile -filetypes $fileTypes]
+    set selectedFile [tk_getOpenFile -filetypes $file_types]
     if { $selectedFile != ""} {
 	newProject
 	upvar 0 ::cf::[set ::curcfg]::currentFile currentFile
@@ -288,11 +289,11 @@ proc fileOpenDialogBox {} {
 #****
 proc fileSaveDialogBox {} {
     upvar 0 ::cf::[set ::curcfg]::currentFile currentFile
-    global fileTypes
-    
+    global file_types
+
     if { $currentFile == "" } {
-	set selectedFile [tk_getSaveFile -filetypes $fileTypes -initialfile\
-		   untitled -defaultextension .imn]
+	set selectedFile [tk_getSaveFile -filetypes $file_types -initialfile \
+	    untitled -defaultextension .imn]
 	saveFile $selectedFile
     } else {
 	saveFile $currentFile
@@ -309,10 +310,10 @@ proc fileSaveDialogBox {} {
 #****
 proc fileSaveAsDialogBox {} {
     upvar 0 ::cf::[set ::curcfg]::currentFile currentFile
-    global fileTypes
+    global file_types
 
-    set selectedFile [tk_getSaveFile -filetypes $fileTypes -initialfile\
-	       untitled -defaultextension .imn]
+    set selectedFile [tk_getSaveFile -filetypes $file_types -initialfile \
+	untitled -defaultextension .imn]
 
     saveFile $selectedFile 
 }
@@ -328,13 +329,8 @@ proc fileSaveAsDialogBox {} {
 proc closeFile {} {
     global cfg_list curcfg
       
-    set new_cfg_list ""
     if { [llength $cfg_list] > 1 } {
-        set indexes [lsearch -not -all -exact $cfg_list $curcfg]
-        foreach ind $indexes {
-            lappend new_cfg_list [lindex $cfg_list $ind]
-        }
-        set cfg_list $new_cfg_list
+	set cfg_list [removeFromList $cfg_list $curcfg]
 
         set cfg [lindex $cfg_list 0]
         loadCfg $cfg
