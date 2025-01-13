@@ -6,10 +6,11 @@ PACKAGES_MINIMAL="$PACKAGES_MINIMAL bind918 bind-tools dnsmasq"
 PACKAGES="$PACKAGES_MINIMAL $PACKAGES_COMMON isc-dhcp44-server isc-dhcp44-client isc-dhcp44-relay \
     sylpheed apache24 apr db18 jansson nginx netsurf midori wireshark gnome-themes-extra sakura vte3 \
     fping dsniff gdk-pixbuf2 gsfonts xpdf openvpn easy-rsa net-snmp"
-    #php84 php84-mysqli php84-curl
+    #php84 php84-mysqli php84-curl 
     #php84-gd php84-intl php84-mbstring php84-xml php84-zip php84-composer php84-extensions php84-zlib"
 PACKAGES=`echo $PACKAGES | sed 's/scapy/py311-scapy/'`
 PACKAGES=`echo $PACKAGES | sed 's/quagga/frr8/'`
+PACKAGES=`echo $PACKAGES | sed 's/dsniff//'`
 
 checkArgs $*
 
@@ -44,8 +45,6 @@ fi
 
 mkdir $VROOT_MASTER/usr/local/etc/snmp
 mkdir $VROOT_MASTER/usr/local/etc/openvpn
-
-#configQuagga
 
 configFrr
 
