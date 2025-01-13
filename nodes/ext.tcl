@@ -25,6 +25,7 @@
 
 # $Id: ext.tcl 63 2013-10-03 12:17:50Z valter $
 
+
 #****h* imunes/ext.tcl
 # NAME
 #  ext.tcl -- defines pc specific procedures
@@ -170,12 +171,12 @@ proc $MODULE.layer {} {
 # SYNOPSIS
 #   set layer [ext.virtlayer]
 # FUNCTION
-#   Returns the layer on which the pc is instantiated i.e. returns NETGRAPH.
+#   Returns the layer on which the pc is instantiated i.e. returns NATIVE.
 # RESULT
-#   * layer -- set to NETGRAPH
+#   * layer -- set to NATIVE
 #****
 proc $MODULE.virtlayer {} {
-    return NETGRAPH
+    return NATIVE
 }
 
 #****f* ext.tcl/ext.shellcmds
@@ -247,7 +248,7 @@ proc $MODULE.shutdown { eid node } {
     set ifc [lindex [ifcList $node] 0]
     if { "$ifc" != "" } {
 	killExtProcess "wireshark.*[getNodeName $node].*\\($eid\\)"
-	killExtProcess "xterm -T Capturing $eid-$node -e tcpdump -ni $eid-$node"
+	killExtProcess "xterm -name imunes-terminal -T Capturing $eid-$node -e tcpdump -ni $eid-$node"
 	stopExternalConnection $eid $node
     }
 }
@@ -317,8 +318,8 @@ proc $MODULE.configGUI { c node } {
     set treecolumns {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "ext configuration"
-    configGUI_nodeName $wi $node "Node name:"
+    wm title $wi [mc "ext configuration"]
+    configGUI_nodeName $wi $node [mc "Node name:"]
 
     configGUI_externalIfcs $wi $node
 
