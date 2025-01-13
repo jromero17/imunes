@@ -25,6 +25,7 @@
 # This work was supported in part by Croatian Ministry of Science
 # and Technology through the research contract #IP-2003-143.
 #
+
 set MODULE nat64
 
 registerModule $MODULE
@@ -34,25 +35,14 @@ proc $MODULE.confNewIfc { node ifc } {
 }
 
 proc $MODULE.confNewNode { node } {
-    upvar 0 ::cf::[set ::curcfg]::$node $node
-    global ripEnable ripngEnable ospfEnable ospf6Enable
-    global rdconfig
     global nodeNamingBase
 
-    set ripEnable [lindex $rdconfig 0]
-    set ripngEnable [lindex $rdconfig 1]
-    set ospfEnable [lindex $rdconfig 2]
-    set ospf6Enable [lindex $rdconfig 3]	
-    
+    router.confNewNode $node
+
     set nconfig [list \
 	"hostname [getNewNodeNameType nat64 $nodeNamingBase(nat64)]" \
 	! ]
     lappend $node "network-config [list $nconfig]"
-    
-    setNodeProtocolRip $node $ripEnable
-    setNodeProtocolRipng $node $ripngEnable
-    setNodeProtocolOspfv2 $node $ospfEnable 
-    setNodeProtocolOspfv3 $node $ospf6Enable
     
     foreach proto { rip ripng ospf ospf6 bgp } {
 	set protocfg [netconfFetchSection $node "router $proto"]
@@ -64,11 +54,6 @@ proc $MODULE.confNewNode { node } {
 	    netconfInsertSection $node $protocfg
 	}
     }
-
-    setAutoDefaultRoutesStatus $node "enabled"
-    setLogIfcType $node lo0 lo
-    setIfcIPv4addr $node lo0 "127.0.0.1/8"
-    setIfcIPv6addr $node lo0 "::1/128"
 
     setTaygaIPv4DynPool $node "192.168.64.0/24"
     setTaygaIPv6Prefix $node "2001::/96"
@@ -124,11 +109,11 @@ proc $MODULE.layer {} {
 }
 
 proc $MODULE.virtlayer {} {
-    return VIMAGE 
+    return VIRTUALIZED 
 }
 
 proc $MODULE.cfggen { node } {
-    set cfg [router.frr.cfggen $node]
+    set cfg [router.cfggen $node]
 
     upvar 0 ::cf::[set ::curcfg]::eid eid
     global nat64ifc_$eid.$node
@@ -154,15 +139,15 @@ proc $MODULE.cfggen { node } {
 }
 
 proc $MODULE.bootcmd { node } {
-    return [router.frr.bootcmd $node]
+    return [router.bootcmd $node]
 }
 
 proc $MODULE.shellcmds { } {
-    return [router.frr.shellcmds]
+    return [router.shellcmds]
 }
 
 proc $MODULE.instantiate { eid node } {
-    router.frr.instantiate $eid $node
+    router.instantiate $eid $node
 }
 
 proc $MODULE.setupNamespace { eid node } {
@@ -185,7 +170,7 @@ proc $MODULE.start { eid node } {
     set tun [createStartTunIfc $eid $node]
     set nat64ifc_$eid.$node $tun
 
-    router.frr.start $eid $node
+    router.start $eid $node
 
     set datadir "/var/db/tayga"
 
@@ -207,7 +192,7 @@ proc $MODULE.start { eid node } {
 
     # XXX
     # Even though this routes should be added here, we add them in the
-    # router.frr.start procedure which invokes nat64.cfggen where we define
+    # router.start procedure which invokes nat64.cfggen where we define
     # them with:
     # lappend cfg "ip route $tayga4pool $tun"
     # lappend cfg "ipv6 route $tayga6prefix $tun"
@@ -223,17 +208,17 @@ proc $MODULE.start { eid node } {
 }
 
 proc $MODULE.shutdown { eid node } {
-    router.frr.shutdown $eid $node
+    router.shutdown $eid $node
     taygaShutdown $eid $node
 }
 
 proc $MODULE.destroy { eid node } {
     taygaDestroy $eid $node
-    router.frr.destroy $eid $node
+    router.destroy $eid $node
 }
 
 proc $MODULE.nghook { eid node ifc } {
-    return [router.frr.nghook $eid $node $ifc]
+    return [router.nghook $eid $node $ifc]
 }
 
 
@@ -251,7 +236,7 @@ proc $MODULE.configGUI { c node } {
     set ifctab [lindex $tabs 1]
     set nat64tab [lindex $tabs 2]
 
-    set treecolumns {"OperState State" "NatState Nat" "IPv4addr IPv4 addr" "IPv6addr IPv6 addr" \
+    set treecolumns {"OperState State" "NatState Nat" "IPv4addrs IPv4 addrs" "IPv6addrs IPv6 addrs" \
             "MACaddr MAC addr" "MTU MTU" "QLen Queue len" "QDisc Queue disc" "QDrop Queue drop" }
     configGUI_addTree $ifctab $node
 
