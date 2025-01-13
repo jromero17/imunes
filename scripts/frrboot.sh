@@ -1,6 +1,7 @@
 #!/bin/sh
 
 zebra -dP0
+staticd -dP0
 
 for f in rip ripng ospf ospf6; do
     grep -q "router $f\$" $1 && ${f}d -dP0
@@ -17,4 +18,4 @@ conf term
 `cat $1`
 __END__
 
-ifconfig lo0 127.0.0.1
+#ifconfig lo0 127.0.0.1
