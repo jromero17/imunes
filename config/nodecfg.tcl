@@ -28,8 +28,8 @@
 
 # $Id: nodecfg.tcl 149 2015-03-27 15:50:14Z valter $
 
+
 #****h* imunes/nodecfg.tcl
-#
 # NAME
 #  nodecfg.tcl -- file used for manipultaion with nodes in IMUNES
 # FUNCTION
@@ -119,17 +119,11 @@
 # setIfcMTU { node_id ifc mtu }
 #	Sets the new MTU. Zero MTU value denotes the default MTU.
 #
-# getIfcIPv4addr { node_id ifc }
-#	Returns a list of all IPv4 addresses assigned to an interface.
-#
-# setIfcIPv4addr { node_id ifc addr }
+# setIfcIPv4addrs { node_id ifc addrs }
 #	Sets a new IPv4 address(es) on an interface. The correctness of the
 #	IP address format is not checked / enforced.
 #
-# getIfcIPv6addr { node_id ifc }
-#	Returns a list of all IPv6 addresses assigned to an interface.
-#
-# setIfcIPv6addr { node_id ifc addr }
+# setIfcIPv6addrs { node_id ifc addrs }
 #	Sets a new IPv6 address(es) on an interface. The correctness of the
 #	IP address format is not checked / enforced.
 #
@@ -217,11 +211,6 @@
 #	Returns the name of the interface connected to the specified peer 
 #       if the peer is on the same canvas, otherwise returns an empty string.
 #
-# ifcByLogicalPeer { local_node_id peer_node_id }
-#	Returns the name of the interface connected to the specified peer.
-#	Returns the right interface even if the peer node is on the other
-#	canvas.
-#
 # hasIPv4Addr { node_id }
 # hasIPv6Addr { node_id }
 #	Returns true if at least one interface has an IPv{4|6} address
@@ -262,29 +251,6 @@
 # getCustomConfigIDs { node }
 #
 #****
-
-#****f* nodecfg.tcl/typemodel
-# NAME
-#   typemodel -- find node's type and routing model 
-# SYNOPSIS
-#   set typemod [typemodel $node]
-# FUNCTION
-#   For input node this procedure returns the node's type and routing model
-#   (if exists) 
-# INPUTS
-#   * node -- node id
-# RESULT
-#   * typemod -- returns node's type and routing model in form type.model
-#****
-proc typemodel { node } {
-    set type [nodeType $node]
-    set model [getNodeModel $node]
-    if { $model != {} } {
-	return $type.$model
-    } else {
-	return $type
-    }
-}
 
 proc getNodeDir { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
@@ -1056,28 +1022,6 @@ proc setIfcMACaddr { node ifc addr } {
     netconfInsertSection $node $ifcfg
 }
 
-#****f* nodecfg.tcl/getIfcIPv4addr
-# NAME
-#   getIfcIPv4addr -- get interface first IPv4 address.
-# SYNOPSIS
-#   set addr [getIfcIPv4addr $node $ifc]
-# FUNCTION
-#   Returns the first IPv4 address assigned to the specified interface.
-# INPUTS
-#   * node -- node id
-#   * ifc -- interface name.
-# RESULT
-#   * addr -- first IPv4 address on the interface
-#    
-#****
-proc getIfcIPv4addr { node ifc } {
-    foreach line [netconfFetchSection $node "interface $ifc"] {
-	if { [lrange $line 0 1] == "ip address" } {
-	    return [lindex $line 2]
-	}
-    }
-}
-
 #****f* nodecfg.tcl/getIfcIPv4addrs
 # NAME
 #   getIfcIPv4addrs -- get interface IPv4 addresses.
@@ -1119,32 +1063,6 @@ proc getLogIfcType { node ifc } {
 	    return [lindex $line 1]
 	}
     }
-}
-
-#****f* nodecfg.tcl/setIfcIPv4addr
-# NAME
-#   setIfcIPv4addr -- set interface IPv4 address.
-# SYNOPSIS
-#   setIfcIPv4addr $node $ifc $addr
-# FUNCTION
-#   Sets a new IPv4 address(es) on an interface. The correctness of the IP
-#   address format is not checked / enforced.
-# INPUTS
-#   * node -- the node id of the node whose interface's IPv4 address is set.
-#   * ifc -- interface name.
-#   * addr -- new IPv4 address.
-#****
-proc setIfcIPv4addr { node ifc addr } {
-    set ifcfg [list "interface $ifc"]
-    foreach line [netconfFetchSection $node "interface $ifc"] {
-	if { [lrange $line 0 1] != "ip address" } {
-	    lappend ifcfg $line
-	}
-    }
-    if { $addr != "" } {
-	lappend ifcfg " ip address $addr"
-    }
-    netconfInsertSection $node $ifcfg
 }
 
 #****f* nodecfg.tcl/setIfcIPv4addrs
@@ -1201,28 +1119,6 @@ proc setLogIfcType { node ifc type } {
     netconfInsertSection $node $ifcfg
 }
 
-#****f* nodecfg.tcl/getIfcIPv6addr
-# NAME
-#   getIfcIPv6addr -- get interface first IPv6 address.
-# SYNOPSIS
-#   set addr [getIfcIPv6addr $node $ifc]
-# FUNCTION
-#   Returns the first IPv6 address assigned to the specified interface.
-# INPUTS
-#   * node -- node id
-#   * ifc -- interface name.
-# RESULT
-#   * addr -- first IPv6 address on the interface
-#    
-#****
-proc getIfcIPv6addr { node ifc } {
-    foreach line [netconfFetchSection $node "interface $ifc"] {
-	if { [lrange $line 0 1] == "ipv6 address" } {
-	    return [lindex $line 2]
-	}
-    }
-}
-
 #****f* nodecfg.tcl/getIfcIPv6addrs
 # NAME
 #   getIfcIPv6addrs -- get interface IPv6 addresses.
@@ -1245,32 +1141,6 @@ proc getIfcIPv6addrs { node ifc } {
 	}
     }
     return $addrlist
-}
-
-#****f* nodecfg.tcl/setIfcIPv6addr
-# NAME
-#   setIfcIPv6addr -- set interface IPv6 address.
-# SYNOPSIS
-#   setIfcIPv6addr $node $ifc $addr
-# FUNCTION
-#   Sets a new IPv6 address(es) on an interface. The correctness of the IP
-#   address format is not checked / enforced.
-# INPUTS
-#   * node -- the node id of the node whose interface's IPv4 address is set.
-#   * ifc -- interface name.
-#   * addr -- new IPv6 address.
-#****
-proc setIfcIPv6addr { node ifc addr } {
-    set ifcfg [list "interface $ifc"]
-    foreach line [netconfFetchSection $node "interface $ifc"] {
-	if { [lrange $line 0 1] != "ipv6 address" } {
-	    lappend ifcfg $line
-	}
-    }
-    if { $addr != "" } {
-	lappend ifcfg " ipv6 address $addr"
-    }
-    netconfInsertSection $node $ifcfg
 }
 
 #****f* nodecfg.tcl/setIfcIPv6addrs
@@ -1384,8 +1254,7 @@ proc getDefaultGateways { node subnet_gws nodes_l2data } {
 
 	# add new subnet at the end of the list
 	set subnet_idx [llength $subnet_gws]
-	set peer_node [logicalPeerByIfc $node $ifc]
-	set peer_ifc [ifcByLogicalPeer $peer_node $node]
+	lassign [logicalPeerByIfc $node $ifc] peer_node peer_ifc
 	lassign [getSubnetData $peer_node $peer_ifc \
 	  $subnet_gws $nodes_l2data $subnet_idx] \
 	  subnet_gws nodes_l2data
@@ -1434,19 +1303,19 @@ proc getSubnetData { this_node this_ifc subnet_gws nodes_l2data subnet_idx } {
 
     dict set nodes_l2data $this_node $this_ifc $subnet_idx
 
-    if { [[typemodel $this_node].layer] == "NETWORK" } {
-	if { [nodeType $this_node] in "router extnat" } {
+    if { [[nodeType $this_node].layer] == "NETWORK" } {
+	if { [nodeType $this_node] in "router nat64 extnat" } {
 	    # this node is a router/extnat, add our IP addresses to lists
-	    set gw4 [lindex [split [getIfcIPv4addr $this_node $this_ifc] /] 0]
-	    set gw6 [lindex [split [getIfcIPv6addr $this_node $this_ifc] /] 0]
+	    # TODO: multiple addresses per iface - split subnet4data and subnet6data
+	    set gw4 [lindex [split [getIfcIPv4addrs $this_node $this_ifc] /] 0]
+	    set gw6 [lindex [split [getIfcIPv6addrs $this_node $this_ifc] /] 0]
 	    lappend my_gws [nodeType $this_node]|$gw4|$gw6
 	    lset subnet_gws $subnet_idx $my_gws
 	}
 
 	# first, get this node/ifc peer's subnet data in case it is an L2 node
 	# and we're not yet gone through it
-	set peer_node [logicalPeerByIfc $this_node $this_ifc]
-	set peer_ifc [ifcByLogicalPeer $peer_node $this_node]
+	lassign [logicalPeerByIfc $this_node $this_ifc] peer_node peer_ifc
 	lassign [getSubnetData $peer_node $peer_ifc \
 	  $subnet_gws $nodes_l2data $subnet_idx] \
 	  subnet_gws nodes_l2data
@@ -1463,8 +1332,7 @@ proc getSubnetData { this_node this_ifc subnet_gws nodes_l2data subnet_idx } {
     foreach ifc [ifcList $this_node] {
 	dict set nodes_l2data $this_node $ifc $subnet_idx
 
-	set peer_node [logicalPeerByIfc $this_node $ifc]
-	set peer_ifc [ifcByLogicalPeer $peer_node $this_node]
+	lassign [logicalPeerByIfc $this_node $ifc] peer_node peer_ifc
 	lassign [getSubnetData $peer_node $peer_ifc \
 	  $subnet_gws $nodes_l2data $subnet_idx] \
 	  subnet_gws nodes_l2data
@@ -1677,24 +1545,57 @@ proc setStatIPv6routes { node routes } {
 proc getDefaultRoutesConfig { node gws } {
     set all_routes4 {}
     set all_routes6 {}
+
+    lassign [getAllIpAddresses $node] ipv4_addrs ipv6_addrs
+
+    if { $ipv4_addrs == "" && $ipv6_addrs == "" } {
+	return "\"$all_routes4\" \"$all_routes6\""
+    }
+
+    # remove all non-extnat routes
+    if { [nodeType $node] in "router nat64" } {
+	set gws [lsearch -inline -all $gws "extnat*"]
+    }
+
     foreach route $gws {
-	lassign [split $route "|"] route_type gateway4 gateway6
-	if { [nodeType $node] == "router" } {
-	    if { $route_type == "extnat" } {
-		if { "0.0.0.0/0 $gateway4" ni [list "0.0.0.0/0 " $all_routes4] } {
-		    lappend all_routes4 "0.0.0.0/0 $gateway4"
-		}
-		if { "::/0 $gateway6" ni [list "::/0 " $all_routes6] } {
-		    lappend all_routes6 "::/0 $gateway6"
-		}
+	lassign [split $route "|"] route_type gateway4 -
+
+	if { $gateway4 == "" } {
+	    continue
+	}
+
+	set match4 false
+	foreach ipv4_addr $ipv4_addrs {
+	    set mask [ip::mask $ipv4_addr]
+	    if { [ip::prefix $gateway4/$mask] == [ip::prefix $ipv4_addr] } {
+		set match4 true
+		break
 	    }
-	} else {
-	    if { "0.0.0.0/0 $gateway4" ni [list "0.0.0.0/0 " $all_routes4] } {
-		lappend all_routes4 "0.0.0.0/0 $gateway4"
+	}
+
+	if { $match4 && "0.0.0.0/0 $gateway4" ni $all_routes4 } {
+	    lappend all_routes4 "0.0.0.0/0 $gateway4"
+	}
+    }
+
+    foreach route $gws {
+	lassign [split $route "|"] route_type - gateway6
+
+	if { $gateway6 == "" } {
+	    continue
+	}
+
+	set match6 false
+	foreach ipv6_addr $ipv6_addrs {
+	    set mask [ip::mask $ipv6_addr]
+	    if { [ip::contract [ip::prefix $gateway6/$mask]] == [ip::contract [ip::prefix $ipv6_addr]] } {
+		set match6 true
+		break
 	    }
-	    if { "::/0 $gateway6" ni [list "::/0 " $all_routes6] } {
-		lappend all_routes6 "::/0 $gateway6"
-	    }
+	}
+
+	if { $match6 && "::/0 $gateway6" ni $all_routes6 } {
+	    lappend all_routes6 "::/0 $gateway6"
 	}
     }
 
@@ -2216,14 +2117,24 @@ proc logicalPeerByIfc { node ifc } {
     upvar 0 ::cf::[set ::curcfg]::$node $node
 
     set peer [peerByIfc $node $ifc]
-    if { [nodeType $peer] != "pseudo" } {
-	return $peer
-
+    if { [nodeType $peer] == "pseudo" } {
+	set node [getNodeMirror $peer]
+	set peer [peerByIfc $node "0"]
+	set peer_ifc [ifcByPeer $peer $node]
     } else {
-	set mirror_node [getNodeMirror $peer]
-	set mirror_ifc [ifcList $mirror_node]
-	return [peerByIfc $mirror_node $mirror_ifc]
+	foreach link [linkByPeers $node $peer] {
+	    set ifaces [linkPeersIfaces $link]
+
+	    set peer_idx [lsearch -exact [linkPeers $link] $node]
+	    set my_ifc [lindex $ifaces $peer_idx]
+	    if { $ifc == $my_ifc } {
+		set peer_ifc [removeFromList $ifaces $ifc "keep_doubles"]
+		break
+	    }
+	}
     }
+
+    return "$peer $peer_ifc"
 }
 
 #****f* nodecfg.tcl/ifcByPeer
@@ -2248,44 +2159,6 @@ proc ifcByPeer { node peer } {
     return [lindex [lindex $entry 1] 0]
 }
 
-#****f* nodecfg.tcl/ifcByLogicalPeer
-# NAME
-#   ifcByPeer -- get node interface by peer.
-# SYNOPSIS
-#   set ifc [peerByIfc $node $peer]
-# FUNCTION
-#   Returns the name of the interface connected to the specified peer. Returns
-#   the right interface even if the peer node is on the other canvas or
-#   connected via split link.
-# INPUTS
-#   * node -- node id
-#   * peer -- id of the peer node
-# RESULT
-#   * ifc -- interface name
-#****
-proc ifcByLogicalPeer { node peer } {
-    upvar 0 ::cf::[set ::curcfg]::$node $node
-
-    set ifc [ifcByPeer $node $peer]
-    if { $ifc == "" } {
-	#
-	# Must search through pseudo peers
-	#
-	foreach ifc [ifcList $node] {
-	    set t_peer [peerByIfc $node $ifc]
-	    if { [nodeType $t_peer] == "pseudo" } {
-		set mirror [getNodeMirror $t_peer]
-		if { [peerByIfc $mirror [ifcList $mirror]] == $peer } {
-		    return $ifc
-		}
-	    }
-	}
-	return ""
-    } else {
-	return $ifc    
-    }
-}
-
 #****f* nodecfg.tcl/hasIPv4Addr
 # NAME
 #   hasIPv4Addr -- has IPv4 address.
@@ -2302,7 +2175,7 @@ proc ifcByLogicalPeer { node peer } {
 #****
 proc hasIPv4Addr { node } {
     foreach ifc [ifcList $node] {
-	if { [getIfcIPv4addr $node $ifc] != "" } {
+	if { [getIfcIPv4addrs $node $ifc] != {} } {
 	    return true
 	}
     }
@@ -2325,7 +2198,7 @@ proc hasIPv4Addr { node } {
 #****
 proc hasIPv6Addr { node } {
     foreach ifc [ifcList $node] {
-	if { [getIfcIPv6addr $node $ifc] != "" } {
+	if { [getIfcIPv6addrs $node $ifc] != {} } {
 	    return true
 	}
     }
@@ -2354,11 +2227,11 @@ proc removeNode { node } {
 
     foreach ifc [ifcList $node] {
 	set peer [peerByIfc $node $ifc]
-	set link [linkByPeers $node $peer]
-	removeLink $link
+	foreach link [linkByPeers $node $peer] {
+	    removeLink $link
+	}
     }
-    set i [lsearch -exact $node_list $node]
-    set node_list [lreplace $node_list $i $i]
+    set node_list [removeFromList $node_list $node]
 
     set node_type [nodeType $node]
     if { $node_type in [array names nodeNamingBase] } {
@@ -2460,7 +2333,7 @@ proc newNode { type } {
     global viewid
     catch {unset viewid}
 	
-    set node [newObjectId node]
+    set node [newObjectId $node_list "n"]
     upvar 0 ::cf::[set ::curcfg]::$node $node
     set $node {}
     lappend $node "type $type"
@@ -2609,6 +2482,28 @@ proc getNodeProtocolOspfv3 { node } {
     }	
 }
 
+#****f* nodecfg.tcl/getNodeProtocolBgp
+# NAME
+#   getNodeProtocolBgp
+# SYNOPSIS
+#   getNodeProtocolBgp $node
+# FUNCTION
+#   Checks if node's current protocol is rip.
+# INPUTS
+#   * node -- node id
+# RESULT
+#   * check -- 1 if it is rip, otherwise 0
+#****
+proc getNodeProtocolBgp { node } {
+    upvar 0 ::cf::[set ::curcfg]::$node $node
+
+    if { [netconfFetchSection $node "router bgp 1000"] != "" } {
+	return 1;
+    } else {
+	return 0;
+    }
+}
+
 #****f* nodecfg.tcl/setNodeProtocolRip
 # NAME
 #   setNodeProtocolRip
@@ -2721,6 +2616,37 @@ proc setNodeProtocolOspfv3 { node ospf6Enable } {
     }
 }
 
+#****f* nodecfg.tcl/setNodeProtocolBgp
+# NAME
+#   setNodeProtocolBgp
+# SYNOPSIS
+#   setNodeProtocolBgp $node $bgpEnable
+# FUNCTION
+#   Sets node's protocol to bgp.
+# INPUTS
+#   * node -- node id
+#   * bgpEnable -- 1 if enabling bgp, 0 if disabling
+#****
+proc setNodeProtocolBgp { node bgpEnable } {
+    upvar 0 ::cf::[set ::curcfg]::$node $node
+
+    if { $bgpEnable == 1 } {
+	set loopback_ipv4 [lindex [split [getIfcIPv4addrs $node "lo0"] "/"] 0]
+
+	netconfInsertSection $node [list "router bgp 1000" \
+		" bgp router-id $loopback_ipv4" \
+		" no bgp ebgp-requires-policy" \
+		" neighbor DEFAULT peer-group" \
+		" neighbor DEFAULT remote-as 1000" \
+		" neighbor DEFAULT update-source $loopback_ipv4" \
+		" redistribute static" \
+		" redistribute connected" \
+		! ]
+    } else {
+	netconfClearSection $node "router bgp 1000"
+    }
+}
+
 #****f* nodecfg.tcl/setNodeType
 # NAME
 #   setNodeType -- set node's type.
@@ -2735,7 +2661,7 @@ proc setNodeProtocolOspfv3 { node ospf6Enable } {
 #****
 proc setNodeType { node newtype } {
     upvar 0 ::cf::[set ::curcfg]::$node $node
-    global ripEnable ripngEnable ospfEnable ospf6Enable changeAddressRange \
+    global ripEnable ripngEnable ospfEnable ospf6Enable bgpEnable changeAddressRange \
      changeAddressRange6
     
     set oldtype [nodeType $node]
@@ -2754,6 +2680,7 @@ proc setNodeType { node newtype } {
 	setNodeProtocolRipng $node 0
 	setNodeProtocolOspfv2 $node 0
 	setNodeProtocolOspfv3 $node 0
+	setNodeProtocolBgp $node 0
 	set interfaces [ifcList $node]
 	foreach ifc $interfaces {
 	    set changeAddressRange 0
@@ -2772,6 +2699,7 @@ proc setNodeType { node newtype } {
 	setNodeProtocolRipng $node $ripngEnable
 	setNodeProtocolOspfv2 $node $ospfEnable 
 	setNodeProtocolOspfv3 $node $ospf6Enable 
+	setNodeProtocolBgp $node $bgpEnable
     }
 }
 
@@ -2795,47 +2723,6 @@ proc setType { node type } {
     } else {
 	set $node [linsert [set $node] 1 "type $type"]
     }
-}
-
-#****f* nodecfg.tcl/setCloudParts
-# NAME
-#   setCloudParts -- set cloud parts
-# SYNOPSIS
-#   setCloudParts $node $nr_parts
-# FUNCTION
-#   Sets the parts of the node's cloud.
-# INPUTS
-#   * node -- node id
-#   * nr_parts -- cloud parts
-#****
-proc setCloudParts { node nr_parts } {
-    upvar 0 ::cf::[set ::curcfg]::$node $node
-
-    set i [lsearch [set $node] "num_parts *"]
-    if { $i >= 0 } {
-	set $node [lreplace [set $node] $i $i "num_parts $nr_parts"]
-    } else {
-	set $node [linsert [set $node] end "num_parts $nr_parts"];
-    }
-}
-
-#****f* nodecfg.tcl/getCloudParts
-# NAME
-#   getCloudParts -- get cloud parts
-# SYNOPSIS
-#   getCloudParts $node
-# FUNCTION
-#   Returns the node's cloud parts.
-# INPUTS
-#   * node -- node id
-# RESULT
-#   * part -- cloud parts
-#****
-proc getCloudParts { node } {
-  upvar 0 ::cf::[set ::curcfg]::$node $node
-
-  set part [lindex [lsearch -inline [set $node] "num_parts *"] 1];
-  return $part;
 }
 
 #****f* nodecfg.tcl/registerModule
@@ -3172,39 +3059,6 @@ proc setNodeDockerAttach { node enabled } {
     }
 }
 
-#****f* nodecfg.tcl/registerRouterModule
-# NAME
-#   registerRouterModule -- register module
-# SYNOPSIS
-#   registerRouterModule $module
-# FUNCTION
-#   Adds a module to router_modules_list.
-# INPUTS
-#   * module -- module to add
-#****
-proc registerRouterModule { module } {
-    global router_modules_list
-    lappend router_modules_list $module
-}
-
-#****f* nodecfg.tcl/isNodeRouter
-# NAME
-#   isNodeRouter -- check whether a node is registered as a router
-# SYNOPSIS
-#   isNodeRouter $node
-# FUNCTION
-#   Checks if a node is a router.
-# INPUTS
-#   * node -- node to check
-#****
-proc isNodeRouter { node } {
-    global router_modules_list
-    if { [nodeType $node] in $router_modules_list } {
-	return 1
-    }
-    return 0
-}
-
 #****f* nodecfg.tcl/nodeCfggenIfcIPv4
 # NAME
 #   nodeCfggenIfcIPv4 -- generate interface IPv4 configuration
@@ -3336,7 +3190,7 @@ proc getAllNodesType { type } {
     upvar 0 ::cf::[set ::curcfg]::node_list node_list
     set type_list ""
     foreach node $node_list {
-	if { [string match "$type*" [typemodel $node]] } {
+	if { [string match "$type*" [nodeType $node]] } {
 	    lappend type_list $node
 	}
     }
@@ -3410,7 +3264,7 @@ proc recalculateNumType { type namebase } {
 #****
 proc transformNodes { nodes type } {
     foreach node $nodes {
-	if { [[typemodel $node].layer] == "NETWORK" } {
+	if { [[nodeType $node].layer] == "NETWORK" } {
 	    upvar 0 ::cf::[set ::curcfg]::$node nodecfg
 	    global changed
 
@@ -3450,6 +3304,41 @@ proc transformNodes { nodes type } {
 	redrawAll
 	updateUndoLog
     }
+}
+
+#****f* nodecfg.tcl/getAllIpAddresses
+# NAME
+#   getAllIpAddresses -- retreives all IP addresses for current node
+# SYNOPSIS
+#   getAllIpAddresses $node
+# FUNCTION
+#   Retreives all local addresses (IPv4 and IPv6) for current node
+# INPUTS
+#   node - node id
+#****
+proc getAllIpAddresses { node } {
+    set ifaces_list [ifcList $node]
+    foreach logifc [logIfcList $node] {
+	if { [string match "vlan*" $logifc] } {
+	    lappend ifaces_list $logifc
+	}
+    }
+
+    set ipv4_list ""
+    set ipv6_list ""
+    foreach item $ifaces_list {
+	set ifcIPs [getIfcIPv4addrs $node $item]
+	if { $ifcIPs != "" } {
+	    lappend ipv4_list {*}$ifcIPs
+	}
+
+	set ifcIPs [getIfcIPv6addrs $node $item]
+	if { $ifcIPs != "" } {
+	    lappend ipv6_list {*}$ifcIPs
+	}
+    }
+
+    return "\"$ipv4_list\" \"$ipv6_list\""
 }
 
 #****f* nodecfg.tcl/pseudo.layer
