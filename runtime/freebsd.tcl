@@ -54,6 +54,23 @@ proc execCmdNode { node cmd } {
     return $output
 }
 
+#****f* freebsd.tcl/execCmdNodeBkg
+# NAME
+#   execCmdNodeBkg -- execute command on virtual node
+# SYNOPSIS
+#   execCmdNodeBkg $node $cmd
+# FUNCTION
+#   Executes a command on a virtual node (in the background).
+# INPUTS
+#   * node -- virtual node id
+#   * cmd -- command to execute
+#****
+proc execCmdNodeBkg { node cmd } {
+    upvar 0 ::cf::[set ::curcfg]::eid eid
+
+    pipesExec "jexec $eid.$node sh -c '$cmd'" "hold"
+}
+
 
 #****f* freebsd.tcl/checkForExternalApps
 # NAME
@@ -147,7 +164,7 @@ proc captureOnExtIfc { node command } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
 
     if { $command == "tcpdump" } {
-	exec xterm -T "Capturing $eid-$node" -e "tcpdump -ni $eid-$node" 2> /dev/null &
+	exec xterm -name imunes-terminal -T "Capturing $eid-$node" -e "tcpdump -ni $eid-$node" 2> /dev/null &
     } else {
 	exec $command -o "gui.window_title:[getNodeName $node] ($eid)" -k -i $eid-$node 2> /dev/null &
     }
@@ -238,7 +255,7 @@ proc spawnShell { node cmd } {
 
     set node_id $eid\.$node
 
-    exec xterm -sb -rightbar \
+    exec xterm -name imunes-terminal -sb -rightbar \
 	-T "IMUNES: [getNodeName $node] (console) [lindex [split $cmd /] end]" \
 	-e "jexec $node_id $cmd" &
 }
@@ -275,8 +292,9 @@ proc allSnapshotsAvailable {} {
 
     set snapshots {}
     foreach node $node_list {
-	set img [getNodeCustomImage $node]
-	if {$img != ""} {
+	# TODO: create another field for other jail/docker arguments
+	set img [lindex [split [getNodeCustomImage $node] " "] end]
+	if { $img != "" } {
 	    lappend snapshots $img
 	}
     }
@@ -446,8 +464,7 @@ proc execSetIfcQDisc { eid node ifc qdisc } {
 	DRR { set qdisc drr }
     }
     if { [nodeType $lnode2] == "pseudo" } {
-	set mirror_link [getLinkMirror [lindex $link 0]]
-	pipesExec "jexec $eid ngctl msg $mirror_link: setcfg \"{ $dir={ $qdisc=1 } }\"" "hold"
+	set link [getLinkMirror $link]
     }
 
     pipesExec "jexec $eid ngctl msg $link: setcfg \"{ $dir={ $qdisc=1 } }\"" "hold"
@@ -479,8 +496,7 @@ proc execSetIfcQDrop { eid node ifc qdrop } {
 	drop-tail { set qdrop droptail }
     }
     if { [nodeType $lnode2] == "pseudo" } {
-	set mirror_link [getLinkMirror [lindex $link 0]]
-	pipesExec "jexec $eid ngctl msg $mirror_link: setcfg \"{ $dir={ $qdrop=1 } }\"" "hold"
+	set link [getLinkMirror $link]
     }
 
     pipesExec "jexec $eid ngctl msg $link: setcfg \"{ $dir={ $qdrop=1 } }\"" "hold"
@@ -510,8 +526,7 @@ proc execSetIfcQLen { eid node ifc qlen } {
 	set qlen -1
     }
     if { [nodeType $lnode2] == "pseudo" } {
-	set mirror_link [getLinkMirror [lindex $link 0]]
-	pipesExec "jexec $eid ngctl msg $mirror_link: setcfg \"{ $dir={ $queuelen=$qlen } }\"" "hold"
+	set link [getLinkMirror $link]
     }
 
     pipesExec "jexec $eid ngctl msg $link: setcfg \"{ $dir={ $queuelen=$qlen } }\"" "hold"
@@ -531,18 +546,6 @@ proc execSetIfcQLen { eid node ifc qlen } {
 #****
 proc execSetLinkParams { eid link } {
     global debug
-
-    set lnode1 [lindex [linkPeers $link] 0]
-    set lnode2 [lindex [linkPeers $link] 1]
-
-    if { [getLinkMirror $link] != "" } {
-	set mirror_link [getLinkMirror $link]
-	if { [nodeType $lnode1] == "pseudo" } {
-	    set lnode1 [lindex [linkPeers $mirror_link] 0]
-	} else {
-	    set lnode2 [lindex [linkPeers $mirror_link] 0]
-	}
-    }
 
     set bandwidth [expr [getLinkBandwidth $link] + 0]
     set delay [expr [getLinkDelay $link] + 0]
@@ -719,7 +722,7 @@ proc vimageCleanup { eid } {
 	    incr step
 	    displayBatchProgress $step $allVimages
 
-	    [typemodel $node].shutdown $eid $node
+	    [nodeType $node].shutdown $eid $node
 	}
 
 	statline ""
@@ -1060,14 +1063,38 @@ proc prepareFilesystemForNode { node } {
 #****
 proc createNodeContainer { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
+    global debug
+
     set node_dir [getNodeDir $node]
 
-    pipesExec "jail -c name=$eid.$node path=$node_dir securelevel=1 \
-	host.hostname=\"[getNodeName $node]\" vnet persist" "hold"
+    set jail_cmd "jail -c name=$eid.$node path=$node_dir securelevel=1 \
+	host.hostname=\"[getNodeName $node]\" vnet persist"
+
+    if { $debug } {
+	puts "Node $node -> '$jail_cmd'"
+    }
+
+    pipesExec "$jail_cmd" "hold"
 }
 
 proc isNodeStarted { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
+
+    set node_type [nodeType $node]
+    if { [$node_type.virtlayer] != "VIRTUALIZED" } {
+	if { $node_type in "rj45 ext extnat extelem" } {
+	    return true
+	}
+
+	try {
+	    exec jexec $eid ngctl show $node:
+	} on error {} {
+	    return false
+	}
+
+	return true
+    }
+
     set node_id "$eid.$node"
 
     try {
@@ -1298,8 +1325,8 @@ proc runConfOnNode { node } {
 	}
 	set confFile "custom.conf"
     } else {
-	set bootcfg [[typemodel $node].cfggen $node]
-	set bootcmd [[typemodel $node].bootcmd $node]
+	set bootcfg [[nodeType $node].cfggen $node]
+	set bootcmd [[nodeType $node].bootcmd $node]
 	set confFile "boot.conf"
     }
 
@@ -1324,7 +1351,7 @@ proc isNodeConfigured { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
     set node_id "$eid.$node"
 
-    if { [[typemodel $node].virtlayer] == "NETGRAPH" } {
+    if { [[nodeType $node].virtlayer] == "NATIVE" } {
 	return true
     }
 
@@ -1341,7 +1368,7 @@ proc isNodeError { node } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
     set node_id "$eid.$node"
 
-    if { [[typemodel $node].virtlayer] == "NETGRAPH" } {
+    if { [[nodeType $node].virtlayer] == "NATIVE" } {
 	return false
     }
 
@@ -1387,10 +1414,10 @@ proc removeNodeIfcIPaddrs { eid node } {
     set node_id "$eid.$node"
 
     foreach ifc [ifcList $node] {
-	foreach ipv4 [getIfcIPv4addr $node $ifc] {
+	foreach ipv4 [getIfcIPv4addrs $node $ifc] {
 	    pipesExec "jexec $node_id ifconfig $ifc $ipv4 -alias" "hold"
 	}
-	foreach ipv6 [getIfcIPv6addr $node $ifc] {
+	foreach ipv6 [getIfcIPv6addrs $node $ifc] {
 	    pipesExec "jexec $node_id ifconfig $ifc inet6 $ipv6 -alias" "hold"
 	}
     }
@@ -1605,13 +1632,13 @@ proc createDirectLinkBetween { lnode1 lnode2 ifname1 ifname2 } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
 
     set ngpeer1 \
-	[lindex [[typemodel $lnode1].nghook $eid $lnode1 $ifname1] 0]
+	[lindex [[nodeType $lnode1].nghook $eid $lnode1 $ifname1] 0]
     set ngpeer2 \
-	[lindex [[typemodel $lnode2].nghook $eid $lnode2 $ifname2] 0]
+	[lindex [[nodeType $lnode2].nghook $eid $lnode2 $ifname2] 0]
     set nghook1 \
-	[lindex [[typemodel $lnode1].nghook $eid $lnode1 $ifname1] 1]
+	[lindex [[nodeType $lnode1].nghook $eid $lnode1 $ifname1] 1]
     set nghook2 \
-	[lindex [[typemodel $lnode2].nghook $eid $lnode2 $ifname2] 1]
+	[lindex [[nodeType $lnode2].nghook $eid $lnode2 $ifname2] 1]
 
     pipesExec "jexec $eid ngctl connect $ngpeer1: $ngpeer2: $nghook1 $nghook2" "hold"
 }
@@ -1633,13 +1660,13 @@ proc createLinkBetween { lnode1 lnode2 ifname1 ifname2 link } {
     upvar 0 ::cf::[set ::curcfg]::eid eid
 
     set ngpeer1 \
-	[lindex [[typemodel $lnode1].nghook $eid $lnode1 $ifname1] 0]
+	[lindex [[nodeType $lnode1].nghook $eid $lnode1 $ifname1] 0]
     set ngpeer2 \
-	[lindex [[typemodel $lnode2].nghook $eid $lnode2 $ifname2] 0]
+	[lindex [[nodeType $lnode2].nghook $eid $lnode2 $ifname2] 0]
     set nghook1 \
-	[lindex [[typemodel $lnode1].nghook $eid $lnode1 $ifname1] 1]
+	[lindex [[nodeType $lnode1].nghook $eid $lnode1 $ifname1] 1]
     set nghook2 \
-	[lindex [[typemodel $lnode2].nghook $eid $lnode2 $ifname2] 1]
+	[lindex [[nodeType $lnode2].nghook $eid $lnode2 $ifname2] 1]
 
     set ngcmds "mkpeer $ngpeer1: pipe $nghook1 upper"
     set ngcmds "$ngcmds\n name $ngpeer1:$nghook1 $link"
@@ -1675,9 +1702,6 @@ proc configureLinkBetween { lnode1 lnode2 ifname1 ifname2 link } {
     set ngcmds "msg $link: setcfg {bandwidth=$bandwidth delay=$delay upstream={BER=$ber duplicate=$dup} downstream={BER=$ber duplicate=$dup}}"
 
     pipesExec "printf \"$ngcmds\" | jexec $eid ngctl -f -" "hold"
-#    if { $debug && $err != "" } {
-#	puts $err
-#    }
 
     # FIXME: remove this to interface configuration?
     # Queues
@@ -2019,25 +2043,38 @@ proc checkSysPrerequisites {} {
     # jail, jexec, jls, ngctl
 }
 
-proc ipsecFilesToNode { node local_cert ipsecret_file } {
+proc ipsecFilesToNode { node ca_cert local_cert ipsecret_file } {
     global ipsecConf ipsecSecrets
+
+    if { $ca_cert != "" } {
+	set trimmed_ca_cert [lindex [split $ca_cert /] end]
+
+	set fileId [open $ca_cert "r"]
+	set trimmed_ca_cert_data [read $fileId]
+	writeDataToNodeFile $node /usr/local/etc/ipsec.d/cacerts/$trimmed_ca_cert $trimmed_ca_cert_data
+	close $fileId
+    }
 
     if { $local_cert != "" } {
 	set trimmed_local_cert [lindex [split $local_cert /] end]
-	set fileId [open $trimmed_local_cert "r"]
+
+	set fileId [open $local_cert "r"]
 	set trimmed_local_cert_data [read $fileId]
-	writeDataToNodeFile $node /usr/local/etc/ipsec.d/certs/$trimmed_local_cert $trimmed_local_cert_data
 	close $fileId
+
+	writeDataToNodeFile $node /usr/local/etc/ipsec.d/certs/$trimmed_local_cert $trimmed_local_cert_data
     }
 
     if { $ipsecret_file != "" } {
 	set trimmed_local_key [lindex [split $ipsecret_file /] end]
-	set fileId [open $trimmed_local_key "r"]
-	set trimmed_local_key_data "# /etc/ipsec.secrets - strongSwan IPsec secrets file\n"
-	set trimmed_local_key_data "$trimmed_local_key_data[read $fileId]\n"
-	set trimmed_local_key_data "$trimmed_local_key_data: RSA $trimmed_local_key"
-	writeDataToNodeFile $node /usr/local/etc/ipsec.d/private/$trimmed_local_key $trimmed_local_key_data
+
+	set fileId [open $ipsecret_file "r"]
+	set local_key_data [read $fileId]
 	close $fileId
+
+	writeDataToNodeFile $node /usr/local/etc/ipsec.d/private/$trimmed_local_key $local_key_data
+
+	set ipsecSecrets "${ipsecSecrets}: RSA $trimmed_local_key"
     }
 
     writeDataToNodeFile $node /usr/local/etc/ipsec.conf $ipsecConf
@@ -2092,13 +2129,11 @@ proc startExternalConnection { eid node } {
     }
     set cmds "ifconfig $outifc link $ether"
 
-    set ipv4 [getIfcIPv4addr $node $ifc]
-    if { $ipv4 != "" } {
-	set cmds "ifconfig $outifc $ipv4"
+    foreach ipv4 [getIfcIPv4addrs $node $ifc] {
+	set cmds "$cmds\n ifconfig $outifc $ipv4"
     }
 
-    set ipv6 [getIfcIPv6addr $node $ifc]
-    if { $ipv6 != "" } {
+    foreach ipv6 [getIfcIPv6addrs $node $ifc] {
 	set cmds "$cmds\n ifconfig $outifc inet6 $ipv6"
     }
 
@@ -2113,7 +2148,10 @@ proc stopExternalConnection { eid node } {
 
 proc setupExtNat { eid node ifc } {
     set extIfc [getNodeName $node]
-    set extIp [getIfcIPv4addrs $node $ifc]
+    set extIp [lindex [getIfcIPv4addrs $node $ifc] 0]
+    if { $extIp == "" } {
+	return
+    }
     set prefixLen [lindex [split $extIp "/"] 1]
     set subnet "[ip::prefix $extIp]/$prefixLen"
 
@@ -2124,7 +2162,10 @@ proc setupExtNat { eid node ifc } {
 
 proc unsetupExtNat { eid node ifc } {
     set extIfc [getNodeName $node]
-    set extIp [getIfcIPv4addrs $node $ifc]
+    set extIp [lindex [getIfcIPv4addrs $node $ifc] 0]
+    if { $extIp == "" } {
+	return
+    }
     set prefixLen [lindex [split $extIp "/"] 1]
     set subnet "[ip::prefix $extIp]/$prefixLen"
 
