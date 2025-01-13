@@ -53,8 +53,7 @@ proc removeCanvas { canvas } {
     upvar 0 ::cf::[set ::curcfg]::canvas_list canvas_list
     upvar 0 ::cf::[set ::curcfg]::$canvas $canvas
 
-    set i [lsearch $canvas_list $canvas]
-    set canvas_list [lreplace $canvas_list $i $i]
+    set canvas_list [removeFromList $canvas_list $canvas]
     set $canvas {}
 }
 
@@ -75,7 +74,7 @@ proc removeCanvas { canvas } {
 proc newCanvas { name } {
     upvar 0 ::cf::[set ::curcfg]::canvas_list canvas_list
 
-    set canvas [newObjectId canvas]
+    set canvas [newObjectId $canvas_list "c"]
     upvar 0 ::cf::[set ::curcfg]::$canvas $canvas
     lappend canvas_list $canvas
     set $canvas {}
@@ -721,14 +720,14 @@ proc changeBkgPopup {} {
     -variable canvasBkgMode -value adjustC2I 
     pack $wi.bgconf.left.down.l.adjust -anchor w
     
-    ttk::radiobutton $wi.bgconf.left.down.l.adjust2 -text [mc "Adjust image to canvas"] \
+    ttk::radiobutton $wi.bgconf.left.down.l.adjust2 -text "Adjust image to canvas" \
     -variable canvasBkgMode -value adjustI2C 
     pack $wi.bgconf.left.down.l.adjust2 -anchor w
     
     #packing left side
     pack $wi.bgconf.left.up.l -anchor w
     pack $wi.bgconf.left.center.left.e -pady 2
-    pack $wi.bgconf.left.center.right.
+    pack $wi.bgconf.left.center.right.b
     pack $wi.bgconf.left.down.l $wi.bgconf.left.down.r -pady 2 -padx 10 -anchor w -side left
     pack $wi -fill both
     
@@ -826,9 +825,9 @@ proc updateBkgPreview { pc imgsize prsrcfile } {
 #   * c -- canvas on which the background is being modified
 #****
 proc popupBkgApply { wi c } {
-    global changed bgsrcfile canvasBkgMode showBkgImage alignCanvasBkg hasIM winOS
+    global changed bgsrcfile canvasBkgMode show_background_image alignCanvasBkg hasIM winOS
     
-    set showBkgImage 0
+    set show_background_image 0
     $wi config -cursor watch
     update
     
@@ -872,19 +871,19 @@ proc popupBkgApply { wi c } {
 		original {
 		    if {$crop == 1} {
 			if {!$winOS} {
-			    exec convert $bgsrcfile -gravity $alignCanvasBkg -background white \
+			    exec magick $bgsrcfile -gravity $alignCanvasBkg -background white \
 			      -extent $sizex\x$sizey $destImgFile
 			} else {
-			    exec cmd /c convert $bgsrcfile -gravity $alignCanvasBkg -background white \
+			    exec cmd /c magick $bgsrcfile -gravity $alignCanvasBkg -background white \
 			      -extent $sizex\x$sizey $destImgFile
 			}
 		    } else {
 			if {!$winOS} {
-			    exec convert $bgsrcfile -gravity $alignCanvasBkg -background white \
+			    exec magick $bgsrcfile -gravity $alignCanvasBkg -background white \
 			      -extent $sizex\x$sizey $destImgFile
 			} else {
-			  exec cmd /c convert $bgsrcfile -gravity $alignCanvasBkg -background white \
-			      -extent $sizex\x$sizey $destImgFile 
+			  exec cmd /c magick $bgsrcfile -gravity $alignCanvasBkg -background white \
+			      -extent $sizex\x$sizey $destImgFile
 			}
 		    }	    
 		    
@@ -893,16 +892,16 @@ proc popupBkgApply { wi c } {
 			return 0
 		    }
 		    setCanvasBkg $c $bkgname
-		    set showBkgImage 1
+		    set show_background_image 1
 		    set changed 1
 		    destroy $wi
 		}
 		str_shr {
 		    if {!$winOS} {
-			exec convert $bgsrcfile -resize $sizex\x$sizey \
+			exec magick $bgsrcfile -resize $sizex\x$sizey \
 			  -size $sizex\x$sizey xc:white +swap -gravity $alignCanvasBkg -composite $destImgFile
 		    } else {
-			exec cmd /c convert $bgsrcfile -resize $sizex\x$sizey \
+			exec cmd /c magick $bgsrcfile -resize $sizex\x$sizey \
 			  -size $sizex\x$sizey xc:white +swap -gravity $alignCanvasBkg -composite $destImgFile
 		    }
 		    
@@ -911,7 +910,7 @@ proc popupBkgApply { wi c } {
 			return 0
 		    }
 		    setCanvasBkg $c $bkgname
-		    set showBkgImage 1
+		    set show_background_image 1
 		    set changed 1
 		    destroy $wi
 		}
@@ -937,16 +936,16 @@ proc popupBkgApply { wi c } {
 			    return 0
 			}
 			setCanvasBkg $c $bkgname
-			set showBkgImage 1
+			set show_background_image 1
 			set changed 1
 			destroy $wi
 		    }
 		}
 		adjustI2C {
 		    if {!$winOS} {
-			exec convert $bgsrcfile -resize $sizex\x$sizey\! $destImgFile
+			exec magick $bgsrcfile -resize $sizex\x$sizey\! $destImgFile
 		    } else {
-			exec cmd /c convert $bgsrcfile -resize $sizex\x$sizey\! $destImgFile
+			exec cmd /c magick $bgsrcfile -resize $sizex\x$sizey\! $destImgFile
 		    }
 
 		    set bkgname [loadImage $destImgFile $c canvasBackground $bgsrcfile]
@@ -954,7 +953,7 @@ proc popupBkgApply { wi c } {
 			return 0
 		    }
 		    setCanvasBkg $c $bkgname
-		    set showBkgImage 1
+		    set show_background_image 1
 		    set changed 1
 		    destroy $wi
 		}
@@ -997,7 +996,7 @@ proc popupBkgApply { wi c } {
 		return 0
 	    }
 	    setCanvasBkg $c $bkgname
-	    set showBkgImage 1
+	    set show_background_image 1
 	    set changed 1
 	    destroy $wi
 	}
@@ -1119,7 +1118,7 @@ proc renameCanvasPopup {} {
 
     ttk::frame $w.renameframe.buttons
     pack $w.renameframe.buttons -side bottom -fill x -pady 2m
-    ttk::button $w.renameframe.buttons.print -text [mc "Apply"]  -command "renameCanvasApply $w"
+    ttk::button $w.renameframe.buttons.print -text [mc "Apply"] -command "renameCanvasApply $w"
     ttk::button $w.renameframe.buttons.cancel -text [mc "Cancel"] -command "destroy $w"
     pack $w.renameframe.buttons.print $w.renameframe.buttons.cancel -side left -expand 1
 
@@ -1224,7 +1223,6 @@ proc renameCanvasApply { w } {
 # INPUTS
 #   * w -- tk widget (resize canvas popup dialog box)
 #****
-
 proc resizeCanvasApply { w } {
     upvar 0 ::cf::[set ::curcfg]::curcanvas curcanvas
     global changed
