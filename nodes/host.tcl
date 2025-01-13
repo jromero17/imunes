@@ -28,6 +28,7 @@
 
 # $Id: host.tcl 63 2013-10-03 12:17:50Z valter $
 
+
 #****h* imunes/host.tcl
 # NAME
 #  host.tcl -- defines host specific procedures
@@ -84,8 +85,8 @@ proc $MODULE.confNewNode { node } {
 
     setAutoDefaultRoutesStatus $node "enabled"
     setLogIfcType $node lo0 lo
-    setIfcIPv4addr $node lo0 "127.0.0.1/8"
-    setIfcIPv6addr $node lo0 "::1/128"
+    setIfcIPv4addrs $node lo0 "127.0.0.1/8"
+    setIfcIPv6addrs $node lo0 "::1/128"
 }
 
 #****f* host.tcl/host.icon
@@ -207,12 +208,12 @@ proc $MODULE.layer {} {
 # SYNOPSIS
 #   set layer [host.virtlayer]
 # FUNCTION
-#   Returns the layer on which the host is instantiated i.e. returns VIMAGE.
+#   Returns the layer on which the host is instantiated i.e. returns VIRTUALIZED.
 # RESULT
-#   * layer -- set to VIMAGE
+#   * layer -- set to VIRTUALIZED
 #****
 proc $MODULE.virtlayer {} {
-    return VIMAGE
+    return VIRTUALIZED
 }
 
 #****f* host.tcl/host.cfggen
@@ -419,7 +420,7 @@ proc $MODULE.configGUI { c node } {
     set configtab [lindex $tabs 0]
     set ifctab [lindex $tabs 1]
 
-    set treecolumns {"OperState State" "NatState Nat" "IPv4addr IPv4 addr" "IPv6addr IPv6 addr" \
+    set treecolumns {"OperState State" "NatState Nat" "IPv4addrs IPv4 addrs" "IPv6addrs IPv6 addrs" \
 	    "MACaddr MAC addr" "MTU MTU" "QLen Queue len" "QDisc Queue disc" "QDrop Queue drop"}
     configGUI_addTree $ifctab $node
 
