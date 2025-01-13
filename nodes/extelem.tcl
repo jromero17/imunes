@@ -28,6 +28,7 @@
 
 # $Id: extelem.tcl 129 2015-02-13 11:14:44Z valter $
 
+
 #****h* imunes/extelem.tcl
 # NAME
 #  extelem.tcl -- defines extelem specific procedures
@@ -103,7 +104,6 @@ proc $MODULE.confNewNode { node } {
 # RESULT
 #   * path -- path to icon
 #****
-
 proc $MODULE.icon { size } {
     global ROOTDIR LIBDIR 
     switch $size {
@@ -167,12 +167,12 @@ proc $MODULE.layer {} {
 # SYNOPSIS
 #   set layer [extelem.virtlayer]
 # FUNCTION
-#   Returns the layer on which the extelem is instantiated, i.e. returns NETGRAPH. 
+#   Returns the layer on which the extelem is instantiated, i.e. returns NATIVE. 
 # RESULT
-#   * layer -- set to NETGRAPH
+#   * layer -- set to NATIVE
 #****
 proc $MODULE.virtlayer {} {
-    return NETGRAPH
+    return NATIVE
 }
 
 #****f* extelem.tcl/extelem.instantiate
@@ -257,15 +257,14 @@ proc $MODULE.configGUI { c node } {
     set treecolumns {}
 
     configGUI_createConfigPopupWin $c
-    wm title $wi "External element configuration"
-    configGUI_nodeName $wi $node "External element name:"
+    wm title $wi [mc "External element configuration"]
+    configGUI_nodeName $wi $node [mc "External element name:"]
 
     configGUI_addPanedWin $wi
     configGUI_rj45s $wi $node
 
     configGUI_buttonsACNode $wi $node
 }
-
 #****f* extelem.tcl/extelem.configInterfacesGUI
 # NAME
 #   extelem.configInterfacesGUI -- configuration of interfaces GUI
