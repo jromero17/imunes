@@ -91,7 +91,7 @@ namespace eval ttk::theme::imunes {
 	    ;
 
 	ttk::style configure Toolbutton \
-	    -anchor center -padding 1 -relief flat -padx 2 -width 90 -height 90
+	    -anchor center -padding 1 -relief flat -padx 2
 	ttk::style map Toolbutton \
 	    -relief [list \
 		    disabled flat \
@@ -167,10 +167,6 @@ namespace eval ttk::theme::imunes {
 	ttk::style configure TProgressbar -background $colors(-frame)
 
 	ttk::style configure Sash -sashthickness 6 -gripcount 10
-	
-	## estilo background
-	ttk::style configure Tmenu \
-	    -background "#343434"
     }
 }
 
