@@ -30,13 +30,12 @@
 # NAME
 #   ipv4.tcl -- file for handling IPv4
 #****
-
-global ipv4 numbits control changeAddrRange changeAddressRange
+global ipv4 numbits control change_subnet4 changeAddressRange
 
 set ipv4 10.0.0.0/24
 set numbits [lindex [split $ipv4 /] 1]
 set control 0
-set changeAddrRange 0
+set change_subnet4 0
 set changeAddressRange 0
 
 #****f* ipv4.tcl/IPv4AddrApply
@@ -128,11 +127,8 @@ proc bin2dec { bin } {
 # RESULT
 #   * ipnet -- returns the free IPv4 network address in the form a.b.c.d 
 #**** 
-proc findFreeIPv4Net { mask } {
-    upvar 0 ::cf::[set ::curcfg]::node_list node_list
-    upvar 0 ::cf::[set ::curcfg]::IPv4UsedList IPv4UsedList
-
-    global ipv4 
+proc findFreeIPv4Net { mask { ipv4_used_list "" } } {
+    global ipv4
     global numbits
 
     set numbits $mask
@@ -167,7 +163,7 @@ proc findFreeIPv4Net { mask } {
 
     set ipnets {}
 
-    foreach addr $IPv4UsedList {
+    foreach addr $ipv4_used_list {
 	if {$numbits <= 8}  {
 	    set ipnet [lindex [split $addr .] 0]
 	} elseif {$numbits > 8 && $numbits <=16} {
@@ -255,77 +251,91 @@ proc findFreeIPv4Net { mask } {
 proc autoIPv4addr { node iface } {
     upvar 0 ::cf::[set ::curcfg]::IPv4UsedList IPv4UsedList
     global IPv4autoAssign
-    if {!$IPv4autoAssign} {
+    if { ! $IPv4autoAssign } {
 	return
     }
     global numbits
-    #changeAddrRange - oznacuje da li se treba mijenjati podmreza (1) ili ne (0) 
-    global changeAddrRange control
-    #changeAddressRange - oznacuje da li je ova procedura pozvana iz
-    #procedure changeAddressRange (1 ako je, 0 inace)
+    #change_subnet4 - to change the subnet (1) or not (0)
+    global change_subnet4 control
+    #changeAddressRange - is this procedure called from 'changeAddressRange' (1 if true, otherwise 0)
     global changeAddressRange
-    #autorenumbered_ifcs - lista svih sucelja cvorova kojima je promijenjena adresa
+    #autorenumbered_ifcs - list of all interfaces that changed an address
     global autorenumbered_ifcs
 
-    set peer_ip4addrs {}
-
-    if { [[typemodel $node].layer] != "NETWORK" } {
+    set node_type [nodeType $node]
+    if { [$node_type.layer] != "NETWORK" } {
 	#
 	# Shouldn't get called at all for link-layer nodes
 	#
-	#puts "autoIPv4 called for a [[typemodel $node].layer] layer node"
+	#puts "autoIPv4 called for a [[nodeType $node].layer] layer node"
 	return
     }
-    setIfcIPv4addr $node $iface ""
 
-    set peer_node [logicalPeerByIfc $node $iface]
+    set IPv4UsedList [removeFromList $IPv4UsedList [getIfcIPv4addrs $node $iface] "keep_doubles"]
 
-    if { [[typemodel $peer_node].layer] == "LINK"} {
-	foreach l2node [listLANnodes $peer_node {}] {
-	    foreach ifc [ifcList $l2node] {
-		set peer [logicalPeerByIfc $l2node $ifc]
-		set peer_if [ifcByLogicalPeer $peer $l2node]
-		set peer_ip4addr [getIfcIPv4addr $peer $peer_if]
-		if { $changeAddressRange == 1 } {
-		    if { [lsearch $autorenumbered_ifcs "$peer $peer_if"] != -1 } {
-			if { $peer_ip4addr != "" } {
-			    lappend peer_ip4addrs $peer_ip4addr
-			}
+    setIfcIPv4addrs $node $iface ""
+
+    lassign [logicalPeerByIfc $node $iface] peer_node peer_if
+    set peer_ip4addrs {}
+    if { $peer_node != "" } {
+	if { [[nodeType $peer_node].layer] == "LINK" } {
+	    foreach l2node [listLANnodes $peer_node {}] {
+		foreach ifc [ifcList $l2node] {
+		    lassign [logicalPeerByIfc $l2node $ifc] peer peer_if
+		    set peer_ip4addr [getIfcIPv4addrs $peer $peer_if]
+		    if { $peer_ip4addr == "" } {
+			continue
 		    }
-		} else {
-		    if { $peer_ip4addr != "" } {
-			lappend peer_ip4addrs $peer_ip4addr
+
+		    if { $changeAddressRange == 1 } {
+			if { "$peer $peer_if" in $autorenumbered_ifcs } {
+			    lappend peer_ip4addrs {*}$peer_ip4addr
+			}
+		    } else {
+			lappend peer_ip4addrs {*}$peer_ip4addr
 		    }
 		}
 	    }
+	} else {
+	    set peer_ip4addrs [getIfcIPv4addrs $peer_node $peer_if]
 	}
-    } elseif {[[typemodel $peer_node].layer] != "LINK"} {
-	set peer_if [ifcByLogicalPeer $peer_node $node]
-	set peer_ip4addr [getIfcIPv4addr $peer_node $peer_if]
-	set peer_ip4addrs $peer_ip4addr
     }
 
-    set targetbyte [[nodeType $node].IPAddrRange]
-    
-    set targetbyte2 0
-        
-    if { $peer_ip4addrs != "" && $changeAddrRange == 0 } {
-	setIfcIPv4addr $node $iface [nextFreeIP4Addr [lindex $peer_ip4addrs 0] $targetbyte $peer_ip4addrs]
+    if { $peer_ip4addrs != "" && $change_subnet4 == 0 } {
+	set addr [nextFreeIP4Addr [lindex $peer_ip4addrs 0] [$node_type.IPAddrRange] $peer_ip4addrs]
     } else {
-        if {$numbits <= 8} {
-	    setIfcIPv4addr $node $iface "[findFreeIPv4Net $numbits].$targetbyte2.$targetbyte2.$targetbyte/$numbits"
-	} elseif {$numbits > 8 && $numbits <=16} {
-	    setIfcIPv4addr $node $iface "[findFreeIPv4Net $numbits].$targetbyte2.$targetbyte/$numbits"
-	} elseif {$numbits > 16 && $numbits <=24} {
-	    setIfcIPv4addr $node $iface "[findFreeIPv4Net $numbits].$targetbyte/$numbits"
-	} elseif {$numbits > 24} { 
-            set lastbyte [lindex [split [findFreeIPv4Net $numbits] .] 3] 
-            set first3bytes [join [lrange [split [findFreeIPv4Net $numbits] .] 0 2] .] 
-            set targetbyte3 [expr {$lastbyte + 1}] 
-	    setIfcIPv4addr $node $iface "$first3bytes.$targetbyte3/$numbits"
-        }
+	set addr [getNextIPv4addr $node_type $IPv4UsedList]
     }
-    lappend IPv4UsedList [getIfcIPv4addr $node $iface]
+
+    setIfcIPv4addrs $node $iface $addr
+    lappend IPv4UsedList $addr
+}
+
+proc getNextIPv4addr { node_type existing_addrs } {
+    global IPv4autoAssign
+
+    if { ! $IPv4autoAssign } {
+	return
+    }
+
+    global numbits
+
+    set targetbyte [$node_type.IPAddrRange]
+    set targetbyte2 0
+    if { $numbits <= 8 } {
+	set ipv4addr "[findFreeIPv4Net $numbits $existing_addrs].$targetbyte2.$targetbyte2.$targetbyte/$numbits"
+    } elseif { $numbits > 8 && $numbits <=16 } {
+	set ipv4addr "[findFreeIPv4Net $numbits $existing_addrs].$targetbyte2.$targetbyte/$numbits"
+    } elseif { $numbits > 16 && $numbits <=24 } {
+	set ipv4addr "[findFreeIPv4Net $numbits $existing_addrs].$targetbyte/$numbits"
+    } elseif { $numbits > 24 } {
+	set lastbyte [lindex [split [findFreeIPv4Net $numbits $existing_addrs] .] 3]
+	set first3bytes [join [lrange [split [findFreeIPv4Net $numbits $existing_addrs] .] 0 2] .]
+	set targetbyte3 [expr {$lastbyte + 1}]
+	set ipv4addr "$first3bytes.$targetbyte3/$numbits"
+    }
+
+    return $ipv4addr
 }
 
 #****f* ipv4.tcl/nextFreeIP4Addr
@@ -394,64 +404,6 @@ proc nextFreeIP4Addr { addr start peers } {
     return $ipaddr
 }
 
-#****f* ipv4.tcl/autoIPv4defaultroute 
-# NAME
-#   autoIPvdefaultroute -- automaticaly assign a default route 
-# SYNOPSIS
-#   autoIPv4defaultroute $node $iface 
-# FUNCTION
-#   searches the interface of the node for a router, if a router is found
-#   then it is a new default gateway. 
-# INPUTS
-#   * node -- default gateway is provided for this node 
-#   * iface -- the interface on witch we search for a new default gateway
-#****
-proc autoIPv4defaultroute { node iface } {
-    global IPv4autoAssign
-    if {!$IPv4autoAssign} {
-	return
-    }
-    if { [[typemodel $node].layer] != "NETWORK" || \
-	[isNodeRouter $node] } {
-	#
-	# Shouldn't get called at all for link-layer nodes
-	#
-	#puts "autoIPv4defaultroute called for [[typemodel $node].layer] node"
-	return
-    }
-
-    set peer_node [logicalPeerByIfc $node $iface]
-
-    if { [[typemodel $peer_node].layer] == "LINK" } {
-	foreach l2node [listLANnodes $peer_node {}] {
-	    foreach ifc [ifcList $l2node] {
-		set peer [logicalPeerByIfc $l2node $ifc]
-		if { ! [isNodeRouter $peer] } {
-		    continue
-		}
-		set peer_if [ifcByLogicalPeer $peer $l2node]
-		set peer_ip4addr [getIfcIPv4addr $peer $peer_if]
-		if { $peer_ip4addr != "" } {
-		    set gw [lindex [split $peer_ip4addr /] 0]
-		    setStatIPv4routes $node [list "0.0.0.0/0 $gw"]
-		    return
-		}
-	    }
-	}
-    } else {
-	if { ! [isNodeRouter $peer_node] } {
-	    return
-	}
-	set peer_if [ifcByLogicalPeer $peer_node $node]
-	set peer_ip4addr [getIfcIPv4addr $peer_node $peer_if]
-	if { $peer_ip4addr != "" } {
-	    set gw [lindex [split $peer_ip4addr /] 0]
-	    setStatIPv4routes $node [list "0.0.0.0/0 $gw"]
-	    return
-	}
-    }
-}
-
 #****f* ipv4.tcl/checkIPv4Addr 
 # NAME
 #   checkIPv4Addr -- check the IPv4 address 
@@ -513,7 +465,7 @@ proc checkIPv4Net { str } {
     if { $str == "" } {
 	return 1
     }
-    if { ![checkIPv4Addr [lindex [split $str /] 0]]} {
+    if { ! [checkIPv4Addr [lindex [split $str /] 0]] } {
 	return 0
     }
     set net [string trim [lindex [split $str /] 1]]
@@ -537,7 +489,6 @@ proc checkIPv4Net { str } {
 #   * valid -- function returns 0 if the input string is not in the form
 #     of a valid IP network, 1 otherwise
 #****
-
 proc checkIPv4Nets { str } {
     foreach net [split $str ";"] {
 	set net [string trim $net]
