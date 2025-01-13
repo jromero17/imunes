@@ -80,16 +80,17 @@
 #    * defEthBandwidth -- defines the ethernet bandwidth
 #    * defSerBandwidth -- defines the serail link bandwidth
 #    * defSerDelay -- defines the serail link delay
-#    * showIfNames -- control variable for showing interface names
-#    * showIfIPaddrs -- control variable for showing interface IPv4 addresses
-#    * showIfIPv6addrs -- control variable for showing interface IPv6 addrs
-#    * showNodeLabels -- control variable for showing node labels
-#    * showLinkLabels -- control variable for showing link labels
+#    * show_interface_names -- control variable for showing interface names
+#    * show_interface_ipv4 -- control variable for showing interface IPv4 addresses
+#    * show_interface_ipv6 -- control variable for showing interface IPv6 addresses
+#    * show_node_labels -- control variable for showing node labels
+#    * show_link_labels -- control variable for showing link labels
 #
 #    * supp_router_models -- supproted router models, currently frr quagga
 #      and static.
 #    * def_router_model -- default router model
 #****
+
 package require Tcl
 package require Tk
 package require tksvg
@@ -109,12 +110,12 @@ set language "$file_data"
 
 # FreeBSD 12.2, FreeBSD 13.0, FreeBSD-13.2
 if [file isfile "$ROOTDIR/$LIBDIR/gui/msgs/${language}.msg" ] {
-	source "$ROOTDIR/$LIBDIR/gui/msgs/${language}.msg"
-	#puts "Existe el archivo: $ROOTDIR/$LIBDIR/gui/msgs/${language}.msg"
-	::msgcat::mclocale "$language"
-	::msgcat::mcload [file join [file dirname [info script]] msgs]
+        source "$ROOTDIR/$LIBDIR/gui/msgs/${language}.msg"
+        #puts "Existe el archivo: $ROOTDIR/$LIBDIR/gui/msgs/${language}.msg"
+        ::msgcat::mclocale "$language"
+        ::msgcat::mcload [file join [file dirname [info script]] msgs]
 } else {
-	#puts "No existe el archivo en $ROOTDIR/$LIBDIR/gui/msgs/${language}.msg"
+        #puts "No existe el archivo en $ROOTDIR/$LIBDIR/gui/msgs/${language}.msg"
 }
 
 set newlink ""
@@ -127,10 +128,8 @@ set badentry 0
 set cursorState 0
 set clock_seconds 0
 set grid 24
-set showGrid 1
 set autorearrange_enabled 0
 set activetool select
-set typeIdiom ""
 
 # resize Oval/Rectangle, "false" or direction: north/west/east/...
 set resizemode false
@@ -161,22 +160,22 @@ set defTextFontFamily "Arial"
 set defTextFontSize 12
 set defTextColor #000000
 
-set showIfNames 1
-set showIfIPaddrs 1
-set showIfIPv6addrs 1
-set showNodeLabels 1
-set showLinkLabels 1
+#set showIfNames 1
+#set showIfIPaddrs 1
+#set showIfIPv6addrs 1
+#set showNodeLabels 1
+#set showLinkLabels 1
 set showZFSsnapshots 0
 
 set IPv4autoAssign 1
 set IPv6autoAssign 1
-set hostsAutoAssign 0
+#set hostsAutoAssign 0
 
 set showTree 0
-
-set showBkgImage 0
-set showAnnotations 1
-set iconSize normal
+# Variables renombradas y eliminadas
+#set showBkgImage 0
+#set showAnnotations 1
+#set iconSize normal
 set zoom_stops [list 0.2 0.4 0.5 0.6 0.8 1 \
   1.25 1.5 1.75 2.0 3.0]
 set canvasBkgMode "original"
@@ -192,17 +191,17 @@ set ripEnable 1
 set ripngEnable 1
 set ospfEnable 0
 set ospf6Enable 0
+set bgpEnable 0
 set routerRipEnable 1
 set routerRipngEnable 1
 set routerOspfEnable 0
 set routerOspf6Enable 0
-set rdconfig [list $routerRipEnable $routerRipngEnable $routerOspfEnable $routerOspf6Enable]
+set routerBgpEnable 0
+set rdconfig [list $routerRipEnable $routerRipngEnable $routerOspfEnable $routerOspf6Enable $routerBgpEnable]
 set brguielements {}
 set selectedExperiment ""
 set copypaste_nodes 0
 set cutNodes 0
-
-#set iconsrcfile [lindex [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.gif] 0]
 set iconsrcfile [lindex [glob -directory $ROOTDIR/$LIBDIR/icons/normal/ *.svg] 0]
 #interface selected in the topology tree
 set selectedIfc ""
@@ -212,7 +211,6 @@ array set nodeNamingBase {
     pc pc
     ext ext
     filter filter
-    ipfirewall ipfirewall
     router router
     host host
     hub hub
@@ -231,12 +229,12 @@ array set nodeNamingBase {
 #
 
 wm minsize . 640 410
-wm geometry . 1016x716-20+0
+wm geometry . 1016x670-20+0
 
 set iconlist ""
 foreach size "256 128 64" {
     set path "$ROOTDIR/$LIBDIR/icons/imunes_icon$size.png"
-    if {[file exists $path]} {
+    if { [file exists $path] } {
 	set icon$size [image create photo -file $path]
 	append iconlist "\$icon$size "
     }
@@ -256,7 +254,6 @@ global colorNameNode
 global colorIPIfc
 global currentTheme
 global currentThemenew
-# Variables puestas por mi
 set colorcanvas "#ffffff"
 set gridVert gray
 set gridHori gray
@@ -264,11 +261,12 @@ set gridIntVert gray
 set gridIntHori gray
 set colorNameNode blue
 set colorIPIfc #000000
-set themeselec [::ttk::style theme use]
+set themeselec [::ttk::style theme use ]
 set currentTheme $themeselec
 set currentThemenew ""
 
 ttk::style theme use $currentTheme
+#ttk::style theme use imunes
 
 ttk::panedwindow .panwin -orient horizontal
 ttk::frame .panwin.f1
@@ -281,37 +279,36 @@ pack propagate .panwin.f2 0
 
 set mf .panwin.f1
 
-if { $themeselec ni {"imunesdark" "black"}} {
-	menu .menubar -background #343434
-	. configure -menu .menubar 
-	.menubar add cascade -label [mc "File"] -underline 0 -menu .menubar.file -font "-weight bold -size 10" -background "#343434" -foreground "#A5A5A5" -activebackground "#0F7FF2" -activeforeground "white"
-	.menubar add cascade -label [mc "Edit"] -underline 0 -menu .menubar.edit -font "-weight bold -size 10" -background "#343434" -foreground "#A5A5A5" -activebackground "#0F7FF2" -activeforeground "white"
-	.menubar add cascade -label [mc "Canvas"] -underline 0 -menu .menubar.canvas -font "-weight bold -size 10" -background "#343434" -foreground "#A5A5A5" -activebackground "#0F7FF2" -activeforeground "white"
-	.menubar add cascade -label [mc "View"] -underline 0 -menu .menubar.view -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
-	.menubar add cascade -label [mc "Tools"] -underline 0 -menu .menubar.tools -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
-	.menubar add cascade -label [mc "TopoGen"] -underline 4 -menu .menubar.t_g -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
-	.menubar add cascade -label [mc "Widgets"] -underline 0 -menu .menubar.widgets -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
-	.menubar add cascade -label [mc "Events"] -underline 1 -menu .menubar.events -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
-	.menubar add cascade -label [mc "Experiment"] -underline 1 -menu .menubar.experiment -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
-	.menubar add cascade -label [mc "Help"] -underline 0 -menu .menubar.help -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
-	.menubar add cascade -label [mc "Idiom"] -underline 0 -menu .menubar.idiomas -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
+if { $themeselec ni { "imunesdark" "black" } } {
+        menu .menubar -background #343434
+        . configure -menu .menubar 
+        .menubar add cascade -label [mc "File"] -underline 0 -menu .menubar.file -font "-weight bold -size 10" -background "#343434" -foreground "#A5A5A5" -activebackground "#0F7FF2" -activeforeground "white"
+        .menubar add cascade -label [mc "Edit"] -underline 0 -menu .menubar.edit -font "-weight bold -size 10" -background "#343434" -foreground "#A5A5A5" -activebackground "#0F7FF2" -activeforeground "white"
+        .menubar add cascade -label [mc "Canvas"] -underline 0 -menu .menubar.canvas -font "-weight bold -size 10" -background "#343434" -foreground "#A5A5A5" -activebackground "#0F7FF2" -activeforeground "white"
+        .menubar add cascade -label [mc "View"] -underline 0 -menu .menubar.view -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
+        .menubar add cascade -label [mc "Tools"] -underline 0 -menu .menubar.tools -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
+        .menubar add cascade -label [mc "TopoGen"] -underline 4 -menu .menubar.t_g -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
+        .menubar add cascade -label [mc "Widgets"] -underline 0 -menu .menubar.widgets -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
+        .menubar add cascade -label [mc "Events"] -underline 1 -menu .menubar.events -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
+        .menubar add cascade -label [mc "Experiment"] -underline 1 -menu .menubar.experiment -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
+        .menubar add cascade -label [mc "Help"] -underline 0 -menu .menubar.help -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
+        .menubar add cascade -label [mc "Idiom"] -underline 0 -menu .menubar.idiomas -font "-weight bold -size 10" -background #343434 -foreground #A5A5A5 -activebackground #0F7FF2 -activeforeground white
 
 } else { 
-	menu .menubar
-	. configure -menu .menubar
-	.menubar add cascade -label [mc "File"] -underline 0 -menu .menubar.file
-	.menubar add cascade -label [mc "Edit"] -underline 0 -menu .menubar.edit
-	.menubar add cascade -label [mc "Canvas"] -underline 0 -menu .menubar.canvas
-	.menubar add cascade -label [mc "View"] -underline 0 -menu .menubar.view
-	.menubar add cascade -label [mc "Tools"] -underline 0 -menu .menubar.tools
-	.menubar add cascade -label [mc "TopoGen"] -underline 4 -menu .menubar.t_g
-	.menubar add cascade -label [mc "Widgets"] -underline 0 -menu .menubar.widgets
-	.menubar add cascade -label [mc "Events"] -underline 1 -menu .menubar.events
-	.menubar add cascade -label [mc "Experiment"] -underline 1 -menu .menubar.experiment
-	.menubar add cascade -label [mc "Help"] -underline 0 -menu .menubar.help
-	.menubar add cascade -label [mc "Idiom"] -underline 0 -menu .menubar.idiomas
+        menu .menubar
+        . configure -menu .menubar
+        .menubar add cascade -label [mc "File"] -underline 0 -menu .menubar.file
+        .menubar add cascade -label [mc "Edit"] -underline 0 -menu .menubar.edit
+        .menubar add cascade -label [mc "Canvas"] -underline 0 -menu .menubar.canvas
+        .menubar add cascade -label [mc "View"] -underline 0 -menu .menubar.view
+        .menubar add cascade -label [mc "Tools"] -underline 0 -menu .menubar.tools
+        .menubar add cascade -label [mc "TopoGen"] -underline 4 -menu .menubar.t_g
+        .menubar add cascade -label [mc "Widgets"] -underline 0 -menu .menubar.widgets
+        .menubar add cascade -label [mc "Events"] -underline 1 -menu .menubar.events
+        .menubar add cascade -label [mc "Experiment"] -underline 1 -menu .menubar.experiment
+        .menubar add cascade -label [mc "Help"] -underline 0 -menu .menubar.help
+        .menubar add cascade -label [mc "Idiom"] -underline 0 -menu .menubar.idiomas
 }
-
 
 
 #
@@ -356,7 +353,7 @@ bind . <Control-s> "fileSaveDialogBox"
 
     ttk::frame $w.printframe.buttons
     pack $w.printframe.buttons -side bottom -fill x -pady 2m
-    ttk::button $w.printframe.buttons.print -text [mc "Print"] -command "printCanvas $w"
+    ttk::button $w.printframe.buttons.print [mc "Print"] -command "printCanvas $w"
     ttk::button $w.printframe.buttons.cancel -text [mc "Cancel"] -command "destroy $w"
     pack $w.printframe.buttons.print $w.printframe.buttons.cancel -side left -expand 1
 
@@ -392,18 +389,18 @@ set printFileType ps
 
     ttk::frame $w.printframe.path
 
-    if {$winOS} {
-	$w.printframe.pdf configure -state disabled
+    if { $winOS } {
+	$w.printframe.ftype.pdf configure -state disabled
     } else {
-      catch {exec ps2pdf} msg
+      catch { exec ps2pdf } msg
       if { [string match *ps2pdfwr* $msg] != 1 } {
-	  $w.printframe.pdf configure -state disabled
+	  $w.printframe.ftype.pdf configure -state disabled
       }
     }
 
     pack $w.printframe.msg -side top -fill x -padx 5
 
-    ttk::button $w.printframe.path.browse -text [mc "Browse"] -width 8 \
+    ttk::button $w.printframe.path.browse -text [mc"Browse"] -width 8 \
 	-command {
 	    global printFileType
 	    set printdest [tk_getSaveFile -initialfile print \
@@ -528,7 +525,7 @@ menu .menubar.tools -tearoff 0
 .menubar.tools add checkbutton -label [mc "IPv6 auto-assign addresses/routes"]  -activebackground #0F7FF2 -activeforeground white \
     -variable IPv6autoAssign
 .menubar.tools add checkbutton -label [mc "Auto-generate /etc/hosts file"]  -activebackground #0F7FF2 -activeforeground white \
-    -variable hostsAutoAssign
+    -variable auto_etc_hosts
 .menubar.tools add separator
 .menubar.tools add command -label [mc "Randomize MAC bytes"] -underline 10 -activebackground #0F7FF2 -activeforeground white \
     -command randomizeMACbytes
@@ -605,7 +602,7 @@ menu .menubar.tools -tearoff 0
     upvar 0 ::cf::[set ::curcfg]::curcanvas curcanvas
     upvar 0 ::cf::[set ::curcfg]::oper_mode oper_mode
     global router_model supp_router_models routerDefaultsModel
-    global routerRipEnable routerRipngEnable routerOspfEnable routerOspf6Enable
+    global routerRipEnable routerRipngEnable routerOspfEnable routerOspf6Enable routerBgpEnable
 
     set wi .popup
     catch {destroy $wi}
@@ -628,6 +625,7 @@ menu .menubar.tools -tearoff 0
     ttk::checkbutton $w.protocols.ripng -text "ripng" -variable routerRipngEnable
     ttk::checkbutton $w.protocols.ospf -text "ospfv2" -variable routerOspfEnable
     ttk::checkbutton $w.protocols.ospf6 -text "ospfv3" -variable routerOspf6Enable
+    ttk::checkbutton $w.protocols.bgp -text "bgp" -variable routerBgpEnable -state disabled
 
     ttk::radiobutton $w.model.frr -text frr -variable router_model \
 	-value frr -command {
@@ -635,6 +633,7 @@ menu .menubar.tools -tearoff 0
 	$w.protocols.ripng configure -state normal
 	$w.protocols.ospf configure -state normal
 	$w.protocols.ospf6 configure -state normal
+	$w.protocols.bgp configure -state disabled
     }
     ttk::radiobutton $w.model.quagga -text quagga -variable router_model \
 	-value quagga -command {
@@ -642,6 +641,7 @@ menu .menubar.tools -tearoff 0
 	$w.protocols.ripng configure -state normal
 	$w.protocols.ospf configure -state normal
 	$w.protocols.ospf6 configure -state normal
+	$w.protocols.bgp configure -state disabled
     }
     ttk::radiobutton $w.model.static -text static -variable router_model \
 	-value static -command {
@@ -649,6 +649,7 @@ menu .menubar.tools -tearoff 0
 	$w.protocols.ripng configure -state disabled
 	$w.protocols.ospf configure -state disabled
 	$w.protocols.ospf6 configure -state disabled
+	$w.protocols.bgp configure -state disabled
     }
 
     if { $router_model == "static" || $oper_mode != "edit" } {
@@ -656,6 +657,7 @@ menu .menubar.tools -tearoff 0
 	$w.protocols.ripng configure -state disabled
 	$w.protocols.ospf configure -state disabled
 	$w.protocols.ospf6 configure -state disabled
+	$w.protocols.bgp configure -state disabled
     }
 
     if { $oper_mode != "edit" } {
@@ -671,10 +673,7 @@ menu .menubar.tools -tearoff 0
     ttk::button $w.buttons.b1 -text [mc "Apply"] -command { routerDefaultsApply $wi }
     ttk::button $w.buttons.b2 -text [mc "Cancel"] -command {
 	set router_model $routerDefaultsModel
-	set routerRipEnable [lindex $rdconfig 0]
-	set routerRipngEnable [lindex $rdconfig 1]
-	set routerOspfEnable [lindex $rdconfig 2]
-	set routerOspf6Enable [lindex $rdconfig 3]
+	lassign $rdconfig routerRipEnable routerRipngEnable routerOspfEnable routerOspf6Enable routerBgpEnable
 	destroy $wi
     }
 
@@ -683,7 +682,8 @@ menu .menubar.tools -tearoff 0
 	-side left -expand 1
     pack $w.protocols -side top -pady 5
     pack $w.protocols.rip $w.protocols.ripng \
-	$w.protocols.ospf $w.protocols.ospf6 -side left
+	$w.protocols.ospf $w.protocols.ospf6 \
+	$w.protocols.bgp -side left
     pack $w.buttons -side bottom -fill x  -pady 2
     pack $w.buttons.b1 -side left -expand 1 -anchor e -padx 2
     pack $w.buttons.b2 -side right -expand 1 -anchor w -padx 2
@@ -739,26 +739,26 @@ menu .menubar.view -tearoff 0
 set m .menubar.view.iconsize
 menu $m -tearoff 0
 .menubar.view add cascade -label [mc "Icon size"] -menu $m -underline 5 -activebackground #0F7FF2 -activeforeground white
-    $m add radiobutton -label [mc "Small"] -variable iconSize -activebackground #0F7FF2 -activeforeground white \
+    $m add radiobutton -label [mc "Small"]  -variable icon_size -activebackground #0F7FF2 -activeforeground white \
 	-value small -command { updateIconSize; redrawAll }
-    $m add radiobutton -label [mc "Normal"] -variable iconSize -activebackground #0F7FF2 -activeforeground white \
+    $m add radiobutton -label [mc "Normal"] -variable icon_size -activebackground #0F7FF2 -activeforeground white \
 	-value normal -command { updateIconSize; redrawAll }
 
 .menubar.view add separator
 
 .menubar.view add checkbutton -label [mc "Show Interface Names"] -activebackground #0F7FF2 -activeforeground white \
-    -underline 5 -variable showIfNames \
+    -underline 5 -variable show_interface_names \
     -command { redrawAllLinks }
-.menubar.view add checkbutton -label [mc "Show IPv4 Addresses"] -activebackground #0F7FF2 -activeforeground white \
-    -underline 8 -variable showIfIPaddrs \
+.menubar.view add checkbutton -label [mc "Show IPv4 Addresses "] -activebackground #0F7FF2 -activeforeground white \
+    -underline 8 -variable show_interface_ipv4 \
     -command { redrawAllLinks }
-.menubar.view add checkbutton -label [mc "Show IPv6 Addresses"] -activebackground #0F7FF2 -activeforeground white \
-    -underline 8 -variable showIfIPv6addrs \
+.menubar.view add checkbutton -label [mc "Show IPv6 Addresses "] -activebackground #0F7FF2 -activeforeground white \
+    -underline 8 -variable show_interface_ipv6 \
     -command { redrawAllLinks }
 .menubar.view add checkbutton -label [mc "Show Node Labels"] -activebackground #0F7FF2 -activeforeground white \
-    -underline 5 -variable showNodeLabels -command {
+    -underline 5 -variable show_node_labels -command {
     foreach object [.panwin.f1.c find withtag nodelabel] {
-	if { $showNodeLabels } {
+	if { $show_node_labels } {
 	    .panwin.f1.c itemconfigure $object -state normal
 	} else {
 	    .panwin.f1.c itemconfigure $object -state hidden
@@ -766,9 +766,9 @@ menu $m -tearoff 0
     }
 }
 .menubar.view add checkbutton -label [mc "Show Link Labels"] -activebackground #0F7FF2 -activeforeground white \
-    -underline 5 -variable showLinkLabels -command {
+    -underline 5 -variable show_link_labels -command {
     foreach object [.panwin.f1.c find withtag linklabel] {
-	if { $showLinkLabels } {
+	if { $show_link_labels } {
 	    .panwin.f1.c itemconfigure $object -state normal
 	} else {
 	    .panwin.f1.c itemconfigure $object -state hidden
@@ -778,11 +778,11 @@ menu $m -tearoff 0
 
 .menubar.view add command -label [mc "Show All"] -activebackground #0F7FF2 -activeforeground white \
     -underline 5 -command {
-	set showIfNames 1
-	set showIfIPaddrs 1
-	set showIfIPv6addrs 1
-	set showNodeLabels 1
-	set showLinkLabels 1
+	set show_interface_names 1
+	set show_interface_ipv4 1
+	set show_interface_ipv6 1
+	set show_node_labels 1
+	set show_link_labels 1
 	redrawAllLinks
 	foreach object [.panwin.f1.c find withtag linklabel] {
 	    .panwin.f1.c itemconfigure $object -state normal
@@ -790,11 +790,11 @@ menu $m -tearoff 0
     }
 .menubar.view add command -label [mc "Show None"] -activebackground #0F7FF2 -activeforeground white \
     -underline 6 -command {
-	set showIfNames 0
-	set showIfIPaddrs 0
-	set showIfIPv6addrs 0
-	set showNodeLabels 0
-	set showLinkLabels 0
+	set show_interface_names 0
+	set show_interface_ipv4 0
+	set show_interface_ipv6 0
+	set show_node_labels 0
+	set show_link_labels 0
 	redrawAllLinks
 	foreach object [.panwin.f1.c find withtag linklabel] {
 	    .panwin.f1.c itemconfigure $object -state hidden
@@ -814,14 +814,15 @@ menu $m -tearoff 0
 .menubar.view add separator
 
 .menubar.view add checkbutton -label [mc "Show Background Image"] -activebackground #0F7FF2 -activeforeground white \
-    -underline 5 -variable showBkgImage \
+    -underline 5 -variable show_background_image \
     -command { redrawAll }
 .menubar.view add checkbutton -label [mc "Show Annotations"] -activebackground #0F7FF2 -activeforeground white \
-    -underline 8 -variable showAnnotations \
+    -underline 8 -variable show_annotations \
     -command { redrawAll }
 .menubar.view add checkbutton -label [mc "Show Grid"] -activebackground #0F7FF2 -activeforeground white \
-    -underline 5 -variable showGrid \
+    -underline 5 -variable show_grid \
     -command { redrawAll }
+
 
 .menubar.view add separator
 .menubar.view add command -label [mc "Zoom In"] -accelerator "+" -activebackground #0F7FF2 -activeforeground white \
@@ -836,6 +837,7 @@ bind . "-" "zoom down"
 .menubar.view add separator
 set m .menubar.view.themes
 menu $m -tearoff 0
+set currentTheme imunes
 .menubar.view add cascade -label [mc "Themes"] -menu $m -activebackground #0F7FF2 -activeforeground white
     $m add radiobutton -label "alt" -variable currentTheme -activebackground #0F7FF2 -activeforeground white \
 	-value alt -command ::saveOptionstheme
@@ -850,8 +852,7 @@ menu $m -tearoff 0
 	$m add radiobutton -label "imunesdark" -variable currentTheme -activebackground #0F7FF2 -activeforeground white \
 	-value imunesdark -command ::saveOptionstheme
 	$m add radiobutton -label "black" -variable currentTheme -activebackground #0F7FF2 -activeforeground white \
-	-value black -command ::saveOptionstheme
-	#-value black -command "ttk::style theme use black"
+	-value black -command ::saveOptionstheme	
 	###########################
 	proc saveOptionstheme { } {
 	    global ROOTDIR
@@ -964,7 +965,7 @@ menu $m -tearoff 0
 	}
 
 #
-# Show Widgets
+# Show
 #
 menu .menubar.widgets
 global showConfig
@@ -1053,9 +1054,9 @@ menu .menubar.events -tearoff  0
 .menubar.events add command -label "Start scheduling" -underline 0 -activebackground #0F7FF2 -activeforeground white \
 	-state normal -command "startEventScheduling"
 .menubar.events add command -label "Stop scheduling" -underline 1 -activebackground #0F7FF2 -activeforeground white \
-	-state disabled -command "stopEventScheduling"
-.menubar.events add separator
-.menubar.events add command -label [mc "Event editor"] -underline 0 -activebackground #0F7FF2 -activeforeground white \
+	-state disabled -command "stopEventScheduling" 
+.menubar.events add separator	
+.menubar.events add command -label "Event editor" -underline 0 -activebackground #0F7FF2 -activeforeground white \
 	-command "elementsEventsEditor"
 #
 # Experiment
@@ -1067,9 +1068,9 @@ menu .menubar.experiment -tearoff 0
 	-command "setOperMode edit" -state disabled
 .menubar.experiment add command -label "Restart" -underline 0 -activebackground #0F7FF2 -activeforeground white \
 	-command "setOperMode edit; setOperMode exec" -state disabled
-.menubar.experiment add separator
+.menubar.experiment add separator	
 .menubar.experiment add command -label [mc "Attach to experiment"] -underline 0 -activebackground #0F7FF2 -activeforeground white \
-	-command "attachToExperimentPopup"
+	-command "attachToExperimentPopup" 
 
 #
 # Help
@@ -1124,9 +1125,6 @@ menu .menubar.help -tearoff 0
     bind $mainFrame.github <Leave> "%W configure -foreground black; \
 	$mainFrame config -cursor arrow"
 }
-
-
-
 #
 # Traduccion
 #
@@ -1148,7 +1146,7 @@ menu .menubar.help -tearoff 0
 	ttk::label $traductFrame.textLabel6 -text "Idiomas Traducidos:" -justify "left" -font "-size 9 -weight bold"
 	ttk::label $traductFrame.textLabel7 -text "Nota1: * Se tradujo con la App de un navegador\nweb conocido, no se garantiza su fiabilidad" -justify "left"
 	ttk::label $traductFrame.textLabel8 -text "Nota2: * Se deja la estructura para que\npersonas del idioma Nativo corrijan los errores" -justify "left"
-	ttk::label $traductFrame.textLabel9 -text "Nota3: Servidor FreeBSD 12.2 totalmente\nen codificación UTF-8" -justify "left"
+	ttk::label $traductFrame.textLabel9 -text "Nota3: Servidor FreeBSD 13.4 totalmente\nen codificación UTF-8" -justify "left"
 	grid $traductFrame.textLabel0 -row 0 -columnspan 4 -pady 1 -padx 1 -sticky we
 	grid $traductFrame.textLabel1 -row 1 -columnspan 4 -pady 1 -padx 1 -sticky we
 	grid $traductFrame.textLabel2 -row 2 -columnspan 4 -pady 1 -padx 1 -sticky we
@@ -1274,7 +1272,7 @@ proc saveOptionsidioma  { } {
     close $fh
 
     proc notification {} {
-        global answer
+    global answer
 	global response
 	puts [set answer [tk_messageBox -message [mc "Notification"] \
 	    -title [mc "Notification"] \
@@ -1354,7 +1352,7 @@ proc toggleButton w {
     global ROOTDIR
     global LIBDIR
     global state
-    if {$node_list == ""} {
+    if { $node_list == "" } {
 	statline "Empty topologies can't be executed."
 	.panwin.f1.c config -cursor left_ptr
 	return
@@ -1380,11 +1378,12 @@ proc toggleButton w {
 pack $mf.left.$b -side top
 #
 #
-foreach b {select link} {
 
-    #set image [image create photo -file $ROOTDIR/$LIBDIR/icons/tiny/$b.gif]
-	set image [image create photo -file $ROOTDIR/$LIBDIR/icons/tiny/$b.svg]
-    ttk::button $mf.left.$b \
+foreach b { select link } {
+
+   set image [image create photo -file $ROOTDIR/$LIBDIR/icons/tiny/$b.svg]
+
+   ttk::button $mf.left.$b \
 	-image $image -style Toolbutton \
 	-command "setActiveTool $b"
     pack $mf.left.$b -side top
@@ -1431,7 +1430,7 @@ bind $mf.left.net_layer <Any-Enter> ".bottom.textbox config -text {Add new netwo
 bind $mf.left.net_layer <Any-Leave> ".bottom.textbox config -text {}"
 pack $mf.left.net_layer
 
-foreach b {rectangle oval freeform text} {
+foreach b { rectangle oval freeform text } {
     set image [image create photo -file $ROOTDIR/$LIBDIR/icons/tiny/$b.svg]
 
     ttk::button $mf.left.$b \
@@ -1568,6 +1567,9 @@ $c bind linklabel <Any-Leave> "anyLeave $c"
 
 $c bind node <Double-1> "nodeConfigGUI $c {}"
 $c bind nodelabel <Double-1> "nodeConfigGUI $c {}"
+
+$c bind node <Control-Double-1> "nodeConfigGUI $c {}"
+$c bind nodelabel <Control-Double-1> "nodeConfigGUI $c {}"
 
 $c bind grid <Double-1> "double1onGrid $c %x %y"
 
