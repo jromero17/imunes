@@ -43,6 +43,7 @@ if [ $mini -eq 0 ]; then
 fi
 
 configQuagga
+
 configXorp
 
 wiresharkGUIfix
