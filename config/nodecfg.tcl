@@ -1566,6 +1566,11 @@ proc getDefaultRoutesConfig { node gws } {
 
 	set match4 false
 	foreach ipv4_addr $ipv4_addrs {
+        # DESDE AQUI 
+	    if { $ipv4_addr == "dhcp" } {
+		    continue
+	    }
+        # HASTA AQUI
 	    set mask [ip::mask $ipv4_addr]
 	    if { [ip::prefix $gateway4/$mask] == [ip::prefix $ipv4_addr] } {
 		set match4 true
