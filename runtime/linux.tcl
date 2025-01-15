@@ -1423,9 +1423,9 @@ proc getIPv6RouteCmd { statrte } {
 
 proc getIPv4IfcCmd { ifc addr primary } {
     # DESDE AQUI
-    if { $addr == "dhcp" } {
-	    return "dhclient -nw $ifc"
-    }
+    #if { $addr == "dhcp" } {
+	#    return "dhclient -nw $ifc"
+    #}
     # HASTA AQUI
     return "ip addr add $addr dev $ifc"
 }
