@@ -2022,6 +2022,7 @@ proc configGUI_ifcMACAddressApply { wi node ifc } {
 #   * node -- node id
 #   * ifc -- interface name
 #****
+
 proc configGUI_ifcIPv4AddressApply { wi node ifc } {
     global changed apply
     set ipaddrs [formatIPaddrList [$wi.if$ifc.ipv4.addr get]]
