@@ -2015,11 +2015,6 @@ proc getExtIfcs { } {
 }
 
 proc getIPv4IfcCmd { ifc addr primary } {
-    # DESDE AQUI
-    #if { $addr == "dhcp" } {
-	#    return "dhclient -b $ifc"
-    #}
-    # HASTA AQUI
     if { $primary } {
 	return "ifconfig $ifc inet $addr"
     }
