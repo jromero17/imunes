@@ -22,7 +22,8 @@ IMUNES GUI is a simple Tcl/Tk based management console, allowing for specificati
 #### Also needed for graphical mode:
     # pkg install tk86 ImageMagick7 xterm wireshark socat
 
-### Support for images and icons .SVG to IMUNES
+> [!IMPORTANT]
+> **### Support for images and icons .SVG to IMUNES.**
 
 https://wiki.tcl-lang.org/page/tksvg
 
