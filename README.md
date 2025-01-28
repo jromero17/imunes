@@ -1,7 +1,7 @@
 <div align="center">
     <br />
     <p>
-        <a href="https://imunes.net"><img src="https://github.com/jromero17/imunes/tree/mymaster/icons/imunes-logo2.1.svg?raw=true" title="imunes.net" alt="IMUNES Website" width="500" /></a>
+        <a href="https://imunes.net"><img src="https://github.com/jromero17/imunes/icons/imunes-logo2.1.svg?raw=true" title="imunes.net" alt="IMUNES Website" width="500" /></a>
     </p>
     <br />
     <p>
