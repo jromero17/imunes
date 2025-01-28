@@ -4,7 +4,7 @@
 <div align="center">
     <br />
     <p>
-        <a href="https://imunes.net"><img src="https://github.com/jromero17/logos/blob/IMUNES-Multi-Idiomas/imunes-logo2.svg?raw=true" title="imunes.net" alt="IMUNES Website" width="300" /></a>
+        <a href="https://imunes.net"><img src="https://github.com/jromero17/logos/blob/IMUNES-Multi-Idiomas/imunes-logo2.svg?raw=true" title="imunes.net" alt="IMUNES Website" width="250" /></a>
 </div>
 
 ### Description
@@ -25,16 +25,16 @@ IMUNES GUI is a simple Tcl/Tk based management console, allowing for specificati
 > [!IMPORTANT]
 > **Support for images and icons .SVG to IMUNES.**
 
-> [!URL]
-> **https://wiki.tcl-lang.org/page/tksvg**
+https://wiki.tcl-lang.org/page/tksvg**
 
-> **# cd  /root**
-> **# git clone https://github.com/oehhar/tksvg.git**
-> **# cd tksvg**
-> **# ./configure --with-tcl=/usr/local/lib/tcl8.6 --with-tk=/usr/local/lib/tk8.6 --exec-prefix=/usr/local/lib/tksvg0.14**
-> **# make**
-> **# make install**
-
+```bash
+# cd  /root
+# git clone https://github.com/oehhar/tksvg.git
+# cd tksvg
+# ./configure --with-tcl=/usr/local/lib/tcl8.6 --with-tk=/usr/local/lib/tk8.6 --exec-prefix=/usr/local/lib/tksvg0.14
+# make
+# make install
+``````
 > [!NOTE]
 > **``tksvg0.14+`` is required.**
 > **(comes out of the tksvgs package version, if you change the version you must change the line at the end,** 
