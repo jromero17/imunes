@@ -5,12 +5,8 @@
     <br />
     <p>
         <a href="https://imunes.net"><img src="https://github.com/jromero17/logos/blob/IMUNES-Multi-Idiomas/imunes-logo2.svg?raw=true" title="imunes.net" alt="IMUNES Website" width="300" /></a>
-    </p>
-    <br />
-    <p>
-    </p>
-    <br />
 </div>
+
 ### Description
 IMUNES GUI is a simple Tcl/Tk based management console, allowing for specification and management of virtual network topologies. The emulation execution engine itself operates within the operating system kernel.
 
