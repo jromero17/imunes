@@ -27,15 +27,17 @@ IMUNES GUI is a simple Tcl/Tk based management console, allowing for specificati
 
 > **https://wiki.tcl-lang.org/page/tksvg**
 
->**    # cd  /root**
->**    # git clone https://github.com/oehhar/tksvg.git**
->**    # cd tksvg
-    # ./configure --with-tcl=/usr/local/lib/tcl8.6 --with-tk=/usr/local/lib/tk8.6 --exec-prefix=/usr/local/lib/tksvg0.14
-    # make
-    # make install
+> **    # cd  /root**
+> **    # git clone https://github.com/oehhar/tksvg.git**
+> **    # cd tksvg**
+> **    # ./configure --with-tcl=/usr/local/lib/tcl8.6 --with-tk=/usr/local/lib/tk8.6 --exec-prefix=/usr/local/lib/tksvg0.14**
+> **    # make**
+> **    # make install**
 
-    NOTE: tksvg0.14 (comes out of the tksvgs package version, if you change the version you must change the line at the end, 
-      depending on the version)
+> [!NOTE]
+> **Node ``tksvg0.14+`` is required.**
+> **(comes out of the tksvgs package version, if you change the version you must change the line at the end,** 
+> **depending on the version)**
 
     The compilation creates the following tree of directories and files.
 ###  
