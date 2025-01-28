@@ -2,9 +2,8 @@
 ## IMUNES - Integrated Multiprotocol Network Emulator / Simulator
 ************************************************************************
 <div align="center">
-    <br />
     <p>
-        <a href="https://imunes.net"><img src="https://github.com/jromero17/logos/blob/IMUNES-Multi-Idiomas/imunes-logo2.svg?raw=true" title="imunes.net" alt="IMUNES Website" width="250" /></a>
+        <a href="https://imunes.net"><img src="https://github.com/jromero17/logos/blob/IMUNES-Multi-Idiomas/imunes-logo2.svg?raw=true" title="imunes.net" alt="IMUNES Website" width="250" /></a></p>
 </div>
 
 ### Description
