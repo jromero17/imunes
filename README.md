@@ -23,13 +23,13 @@ IMUNES GUI is a simple Tcl/Tk based management console, allowing for specificati
     # pkg install tk86 ImageMagick7 xterm wireshark socat
 
 > [!IMPORTANT]
-> **### Support for images and icons .SVG to IMUNES.**
+> **Support for images and icons .SVG to IMUNES.**
 
-https://wiki.tcl-lang.org/page/tksvg
+> **https://wiki.tcl-lang.org/page/tksvg**
 
-    # cd  /root
-    # git clone https://github.com/oehhar/tksvg.git
-    # cd tksvg
+>**    # cd  /root**
+>**    # git clone https://github.com/oehhar/tksvg.git**
+>**    # cd tksvg
     # ./configure --with-tcl=/usr/local/lib/tcl8.6 --with-tk=/usr/local/lib/tk8.6 --exec-prefix=/usr/local/lib/tksvg0.14
     # make
     # make install
